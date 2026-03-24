@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -61,9 +61,9 @@ public:
                   StaState *sta);
 
 private:
-  static float insertionDelay(Path *clk_path,
+  static Delay insertionDelay(Path *clk_path,
                               StaState *sta);
-  static float delay(Path *clk_path,
+  static Delay delay(Path *clk_path,
                      StaState *sta);
   static float clkTreeDelay(Path *clk_path,
                             StaState *sta);

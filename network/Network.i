@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -511,7 +511,7 @@ net_pins(Net *net)
   return pins;
 }
 
-const char *
+std::string
 pin_location(const Pin *pin)
 {
   Network *network = Sta::sta()->ensureLinked();
@@ -520,12 +520,12 @@ pin_location(const Pin *pin)
   network->location(pin, x, y, exists);
   // return x/y as tcl list
   if (exists)
-    return sta::stringPrintTmp("%f %f", x, y);
+    return sta::format("{} {}", x, y);
   else
     return "";
 }
 
-const char *
+std::string
 port_location(const Port *port)
 {
   Network *network = Sta::sta()->ensureLinked();
@@ -638,13 +638,16 @@ InstancePinIterator *
 pin_iterator() { return Sta::sta()->ensureLinked()->pinIterator(self); }
 InstanceNetIterator *
 net_iterator() { return Sta::sta()->ensureLinked()->netIterator(self); }
+
 Pin *
 find_pin(const char *name)
 {
   return Sta::sta()->ensureLinked()->findPin(self, name);
 }
+
 std::string
-get_attribute(const char *key) {
+get_attribute(const char *key)
+{
   return Sta::sta()->ensureLinked()->getAttribute(self, key);
 }
 

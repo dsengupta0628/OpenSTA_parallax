@@ -1,5 +1,5 @@
 # OpenSTA, Static Timing Analyzer
-# Copyright (c) 2025, Parallax Software, Inc.
+# Copyright (c) 2026, Parallax Software, Inc.
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -267,6 +267,7 @@ define_cmd_args "user_run_time" {}
 
 # Write run time statistics to filename.
 proc write_stats { filename } {
+puts "stats $filename"
   if { ![catch {open $filename w} stream] } {
     puts $stream "[elapsed_run_time] [user_run_time] [memory_usage]"
     close $stream

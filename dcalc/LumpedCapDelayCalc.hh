@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -74,8 +74,8 @@ public:
 protected:
   ArcDcalcResult makeResult(const LibertyLibrary *drvr_library,
                             const RiseFall *rf,
-                            ArcDelay gate_delay,
-                            Slew drvr_slew,
+                            const ArcDelay &gate_delay,
+                            const Slew &drvr_slew,
                             const LoadPinIndexMap &load_pin_index_map);
 
   using ArcDelayCalc::reduceParasitic;

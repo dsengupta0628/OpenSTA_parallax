@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -183,7 +183,7 @@ ReportTcl::flush()
 // Tcl_Main can eval multiple commands before the flushing the command
 // output, so the log/redirect commands must force a flush.
 void
-ReportTcl::logBegin(const char *filename)
+ReportTcl::logBegin(std::string filename)
 {
   flush();
   Report::logBegin(filename);
@@ -197,14 +197,14 @@ ReportTcl::logEnd()
 }
 
 void
-ReportTcl::redirectFileBegin(const char *filename)
+ReportTcl::redirectFileBegin(std::string filename)
 {
   flush();
   Report::redirectFileBegin(filename);
 }
 
 void
-ReportTcl::redirectFileAppendBegin(const char *filename)
+ReportTcl::redirectFileAppendBegin(std::string filename)
 {
   flush();
   Report::redirectFileAppendBegin(filename);

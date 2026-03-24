@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -25,13 +25,13 @@
 #include "Liberty.hh"
 
 #include "ContainerHelpers.hh"
+#include "Format.hh"
 #include "Mutex.hh"
 #include "EnumNameMap.hh"
 #include "Report.hh"
 #include "Debug.hh"
 #include "Error.hh"
 #include "StringUtil.hh"
-#include "StringSet.hh"
 #include "PatternMatch.hh"
 #include "Units.hh"
 #include "Transition.hh"
@@ -776,7 +776,7 @@ LibertyLibrary::makeSceneMap(LibertyCell *cell1,
         port1->setScenePort(port2, ap_index);
     }
     else
-      report->warn(1110, "cell %s/%s port %s not found in cell %s/%s.",
+      report->warn(1110, "cell {}/{} port {} not found in cell {}/{}.",
                    cell1->library()->name(),
                    cell1->name(),
                    port_name,
@@ -802,7 +802,7 @@ LibertyLibrary::makeSceneMap(LibertyCell *cell1,
       }
     }
     else
-      report->warn(1111, "cell %s/%s %s -> %s timing group %s not found in cell %s/%s.",
+      report->warn(1111, "cell {}/{} {} -> {} timing group {} not found in cell {}/{}.",
                    cell1->library()->name(),
                    cell1->name(),
                    arc_set1->from() ? arc_set1->from()->name() : "",
@@ -821,7 +821,7 @@ LibertyLibrary::checkScenes(LibertyCell *cell,
   for (const Scene *scene : scenes) {
     for (auto min_max : MinMax::range()) {
       if (!cell->checkSceneCell(scene, min_max))
-        report->error(1112, "Liberty cell %s/%s for corner %s/%s not found.",
+        report->error(1112, "Liberty cell {}/{} for corner {}/{} not found.",
                       cell->libertyLibrary()->name(),
                       cell->name(),
                       scene->name().c_str(),
@@ -1263,7 +1263,7 @@ LibertyCell::makeInternalPower(LibertyPort *port,
                                LibertyPort *related_port,
                                LibertyPort *related_pg_pin,
                                const std::shared_ptr<FuncExpr> &when,
-                               InternalPowerModels &models)
+                               const InternalPowerModels &models)
 {
   internal_powers_.emplace_back(port, related_port, related_pg_pin, when, models);
   port_internal_powers_[port].push_back(internal_powers_.size() - 1);
@@ -1367,17 +1367,14 @@ LibertyCell::makeTimingArcPortMaps()
     LibertyPort *from = arc_set->from();
     LibertyPort *to = arc_set->to();
     if (from && to) {
-      LibertyPortPair from_to_pair(from, to);
-      TimingArcSetSeq &sets = port_timing_arc_set_map_[from_to_pair];
+      TimingArcSetSeq &sets = port_timing_arc_set_map_[{from, to}];
       sets.push_back(arc_set);
     }
 
-    LibertyPortPair from_pair(from, nullptr);
-    TimingArcSetSeq &from_sets = port_timing_arc_set_map_[from_pair];
+    TimingArcSetSeq &from_sets = port_timing_arc_set_map_[{from, nullptr}];
     from_sets.push_back(arc_set);
 
-    LibertyPortPair to_pair(nullptr, to);
-    TimingArcSetSeq &to_sets = port_timing_arc_set_map_[to_pair];
+    TimingArcSetSeq &to_sets = port_timing_arc_set_map_[{nullptr, to}];
     to_sets.push_back(arc_set);
 
     const TimingRole *role = arc_set->role();
@@ -1411,8 +1408,7 @@ LibertyCell::timingArcSets(const LibertyPort *from,
                            const LibertyPort *to) const
 {
   static const TimingArcSetSeq null_set;
-  const LibertyPortPair port_pair(from, to);
-  auto itr = port_timing_arc_set_map_.find(port_pair);
+  auto itr = port_timing_arc_set_map_.find({from, to});
   return (itr == port_timing_arc_set_map_.end()) ? null_set : itr->second;
 }
 
@@ -1437,8 +1433,8 @@ LibertyCell::timingArcSetCount() const
 bool
 LibertyCell::hasTimingArcs(LibertyPort *port) const
 {
-  return port_timing_arc_set_map_.contains(LibertyPortPair(port, nullptr))
-    || port_timing_arc_set_map_.contains(LibertyPortPair(nullptr, port));
+  return port_timing_arc_set_map_.contains({port, nullptr})
+    || port_timing_arc_set_map_.contains({nullptr, port});
 }
 
 void
@@ -1708,7 +1704,7 @@ LibertyCell::makeLatchEnables(Report *report,
               TimingSense en_sense = en_func->portTimingSense(en);
               if (en_sense == TimingSense::positive_unate
                   && en_rf != RiseFall::rise())
-                report->warn(1114, "cell %s/%s %s -> %s latch enable %s_edge is inconsistent with latch group enable function positive sense.",
+                report->warn(1114, "cell {}/{} {} -> {} latch enable {}_edge is inconsistent with latch group enable function positive sense.",
                              library_->name(),
                              name(),
                              en->name(),
@@ -1716,7 +1712,7 @@ LibertyCell::makeLatchEnables(Report *report,
                              en_rf == RiseFall::rise()?"rising":"falling");
               else if (en_sense == TimingSense::negative_unate
                        && en_rf != RiseFall::fall())
-                report->warn(1115, "cell %s/%s %s -> %s latch enable %s_edge is inconsistent with latch group enable function negative sense.",
+                report->warn(1115, "cell {}/{} {} -> {} latch enable {}_edge is inconsistent with latch group enable function negative sense.",
                              library_->name(),
                              name(),
                              en->name(),
@@ -1726,7 +1722,7 @@ LibertyCell::makeLatchEnables(Report *report,
           }
         }
         else
-          report->warn(1121, "cell %s/%s no latch enable found for %s -> %s.",
+          report->warn(1121, "cell {}/{} no latch enable found for {} -> {}.",
                        library_->name(),
                        name(),
                        d->name(),
@@ -1772,7 +1768,7 @@ LibertyCell::findLatchSetup(const LibertyPort *d,
       for (TimingArc *arc : arc_set->arcs()) {
         const RiseFall *from_rf = arc->fromEdge()->asRiseFall();
         if (from_rf == en_rf) {
-          report->warn(1113, "cell %s/%s %s -> %s latch enable %s_edge is inconsistent with %s -> %s setup_%s check.",
+          report->warn(1113, "cell {}/{} {} -> {} latch enable {}_edge is inconsistent with {} -> {} setup_{} check.",
                        library_->name(),
                        name(),
                        en->name(),
@@ -1829,7 +1825,7 @@ LibertyCell::makeLatchEnable(LibertyPort *d,
   latch_check_map_[setup_check] = idx;
   d->setIsLatchData(true);
   debugPrint(debug, "liberty_latch", 1,
-             "latch %s -> %s | %s %s -> %s | %s %s -> %s setup",
+             "latch {} -> {} | {} {} -> {} | {} {} -> {} setup",
              d->name(),
              q->name(),
              en->name(),
@@ -2909,7 +2905,7 @@ ModeDef::defineValue(const char *value,
                      const char *sdf_cond)
 {
   std::string key = value;
-  std::string sdf = sdf_cond ? std::string(sdf_cond) : std::string();
+  std::string sdf = sdf_cond ? sdf_cond : std::string();
   auto [it, inserted] = values_.try_emplace(key, key, cond, std::move(sdf));
   return &it->second;
 }
@@ -3207,27 +3203,27 @@ ScaleFactors::report(Report *report)
   std::string line = "          ";
   for (int pvt_index = 0; pvt_index < scale_factor_pvt_count; pvt_index++) {
     ScaleFactorPvt pvt = (ScaleFactorPvt) pvt_index;
-    stringAppend(line, "%10s", scaleFactorPvtName(pvt));
+    line += sta::format("{:>10}", scaleFactorPvtName(pvt));
   }
-  report->reportLineString(line);
+  report->reportLine(line);
 
   for (int type_index = 0; type_index < scale_factor_type_count; type_index++) {
     ScaleFactorType type = (ScaleFactorType) type_index;
-    stringPrint(line, "%10s ", scaleFactorTypeName(type));
+    std::string line = sta::format("{:>10}", scaleFactorTypeName(type));
     for (int pvt_index = 0; pvt_index < scale_factor_pvt_count; pvt_index++) {
       if (scaleFactorTypeRiseFallSuffix(type)
           || scaleFactorTypeRiseFallPrefix(type)
           || scaleFactorTypeLowHighSuffix(type)) {
-        stringAppend(line, " %.3f,%.3f",
+        line += sta::format(" {:.3f},{:.3f}",
                      scales_[type_index][pvt_index][RiseFall::riseIndex()],
                      scales_[type_index][pvt_index][RiseFall::fallIndex()]);
       }
       else {
-        stringAppend(line, " %.3f",
+        line += sta::format(" {:.3f}",
                      scales_[type_index][pvt_index][0]);
       }
     }
-    report->reportLineString(line);
+    report->reportLine(line);
   }
 }
 

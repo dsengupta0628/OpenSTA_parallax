@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -96,11 +96,10 @@ sourceTclFile(const char *filename,
               bool verbose,
               Tcl_Interp *interp)
 {
-  std::string cmd;
-  stringPrint(cmd, "sta::include_file %s %s %s",
-              filename,
-              echo ? "1" : "0",
-              verbose ? "1" : "0");
+  std::string cmd = sta::format("sta::include_file {} {} {}",
+                                filename,
+                                echo ? "1" : "0",
+                                verbose ? "1" : "0");
   int code = Tcl_Eval(interp, cmd.c_str());
   const char *result = Tcl_GetStringResult(interp);
   if (result[0] != '\0')

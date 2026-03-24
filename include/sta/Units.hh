@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -56,9 +56,8 @@ public:
   void setDigits(int digits);
   // Does not include suffix.
   int width() const;
-  const char *asString(float value) const;
-  const char *asString(double value) const;
-  const char *asString(float value,
+  std::string asString(float value) const;
+  std::string asString(float value,
                        int digits) const;
 
 private:

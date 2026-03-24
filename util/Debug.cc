@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -79,21 +79,6 @@ Debug::setLevel(const char *what,
     debug_map_[what] = level;
     debug_on_ = true;
   }
-}
-
-void
-Debug::reportLine(const char *what,
-                  const char *fmt,
-                  ...)
-{
-  va_list args;
-  va_start(args, fmt);
-  std::unique_lock<std::mutex> lock(buffer_lock_);
-  report_->printToBuffer("%s", what);
-  report_->printToBufferAppend(": ");
-  report_->printToBufferAppend(fmt, args);
-  report_->printBufferLine();
-  va_end(args);
 }
 
 } // namespace

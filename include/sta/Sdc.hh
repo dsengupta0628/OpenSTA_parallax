@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -30,7 +30,6 @@
 #include <mutex>
 
 #include "StringUtil.hh"
-#include "StringSet.hh"
 #include "MinMax.hh"
 #include "StaState.hh"
 #include "NetworkClass.hh"
@@ -149,7 +148,7 @@ using ExceptionPathPtHash = std::map<size_t, ExceptionPathSet>;
 using ClockLatencies = std::set<ClockLatency*, ClockLatencyLess>;
 using EdgeClockLatencyMap = std::map<PinPair, ClockLatency*, PinPairLess>;
 using PinClockUncertaintyMap = std::map<const Pin*, ClockUncertainties*>;
-using InterClockUncertaintySet = std::set<InterClockUncertainty*, InterClockUncertaintyLess>;
+using InterClockUncertaintySet=std::set<InterClockUncertainty*,InterClockUncertaintyLess>;
 using ClockGatingCheckMap = std::map<const Clock*, ClockGatingCheck*>;
 using InstanceClockGatingCheckMap = std::map<const Instance*, ClockGatingCheck*>;
 using PinClockGatingCheckMap = std::map<const Pin*, ClockGatingCheck*>;
@@ -180,11 +179,11 @@ using InstDeratingFactorsMap = std::map<const Instance*, DeratingFactorsCell*>;
 using CellDeratingFactorsMap = std::map<const LibertyCell*, DeratingFactorsCell*>;
 using ClockGroupsSet = std::set<ClockGroups*>;
 using ClockGroupsClkMap = std::map<const Clock*, ClockGroupsSet*>;
-using ClockGroupsNameMap = std::map<const char*, ClockGroups*, CharPtrLess>;
+using ClockGroupsNameMap = std::map<std::string, ClockGroups*>;
 using ClockSenseMap = std::map<PinClockPair, ClockSense, PinClockPairLess>;
 using ClkHpinDisables = std::set<ClkHpinDisable*, ClkHpinDisableLess>;
 using GroupPathSet = std::set<GroupPath*, ExceptionPathLess>;
-using GroupPathMap = std::map<const char*, GroupPathSet*, CharPtrLess>;
+using GroupPathMap = std::map<std::string, GroupPathSet*>;
 using ClockPairSet = std::set<ClockPair, ClockPairLess>;
 using NetVoltageMap = std::map<const Net*, MinMaxFloatValues>;
 
@@ -500,7 +499,7 @@ public:
                               Clock *to_clk,
                               const RiseFallBoth *to_rf,
                               const SetupHoldAll *setup_hold);
-  ClockGroups *makeClockGroups(const char *name,
+  ClockGroups *makeClockGroups(const std::string &name,
                                bool logically_exclusive,
                                bool physically_exclusive,
                                bool asynchronous,
@@ -508,11 +507,13 @@ public:
                                const char *comment);
   void makeClockGroup(ClockGroups *clk_groups,
                       ClockSet *clks);
-  void removeClockGroups(const char *name);
-  // nullptr name removes all.
-  void removeClockGroupsLogicallyExclusive(const char *name);
-  void removeClockGroupsPhysicallyExclusive(const char *name);
-  void removeClockGroupsAsynchronous(const char *name);
+  void removeClockGroups(const std::string &name);
+  void removeClockGroupsLogicallyExclusive();
+  void removeClockGroupsLogicallyExclusive(const std::string &name);
+  void removeClockGroupsPhysicallyExclusive();
+  void removeClockGroupsPhysicallyExclusive(const std::string &name);
+  void removeClockGroupsAsynchronous();
+  void removeClockGroupsAsynchronous(const std::string &name);
   bool sameClockGroup(const Clock *clk1,
                       const Clock *clk2) const;
   // Clocks explicitly excluded by set_clock_group.
@@ -757,7 +758,7 @@ public:
                  ExceptionThruSeq *thrus,
                  ExceptionTo *to,
                  const MinMaxAll *min_max);
-  void makeGroupPath(const char *name,
+  void makeGroupPath(const std::string &name,
                      bool is_default,
                      ExceptionFrom *from,
                      ExceptionThruSeq *thrus,
@@ -1267,7 +1268,7 @@ protected:
   void makeClkGroupExclusions(ClockGroupSet *groups);
   void makeClkGroupSame(ClockGroup *group);
   void clearClkGroupExclusions();
-  char *makeClockGroupsName();
+  std::string makeClockGroupsName();
   void setClockSense(const Pin *pin,
                      const Clock *clk,
                      ClockSense sense);
@@ -1306,6 +1307,7 @@ protected:
   bool clk_hpin_disables_valid_;
   PinSet propagated_clk_pins_;
   ClockLatencies clk_latencies_;
+  PinSet clk_latency_pins_;
   EdgeClockLatencyMap edge_clk_latency_map_;
   ClockInsertions clk_insertions_;
   PinClockUncertaintyMap pin_clk_uncertainty_map_;

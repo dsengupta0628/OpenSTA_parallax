@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 %inline %{
 
 void
-write_path_spice_cmd(Path *path,
+write_path_spice_cmd(const Path *path,
                      const char *spice_filename,
                      const char *subckt_filename,
                      const char *lib_subckt_filename,

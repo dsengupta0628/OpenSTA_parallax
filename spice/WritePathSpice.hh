@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "StringSet.hh"
 #include "CircuitSim.hh"
 
 namespace sta {
@@ -35,7 +34,7 @@ class StaState;
 // Write a spice deck for path.
 // Throws FileNotReadable, FileNotWritable, SubcktEndsMissing
 void
-writePathSpice(Path *path,
+writePathSpice(const Path *path,
                // Spice file written for path.
                const char *spice_filename,
                // Subckts used by path included in spice file.

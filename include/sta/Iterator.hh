@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -56,8 +56,8 @@ public:
   {
   }
 
-  bool hasNext() { return seq_  && itr_ != seq_->end(); }
-  OBJ_TYPE next() { return *itr_++; }
+  bool hasNext() override { return seq_  && itr_ != seq_->end(); }
+  OBJ_TYPE next() override { return *itr_++; }
 
 protected:
   const VECTOR_TYPE *seq_;
@@ -80,8 +80,8 @@ public:
   {
   }
 
-  bool hasNext() { return map_ && itr_ != map_->end(); }
-  OBJ_TYPE next() {
+  bool hasNext() override { return map_ && itr_ != map_->end(); }
+  OBJ_TYPE next() override {
     OBJ_TYPE next = itr_->second;
     itr_++;
     return next;
@@ -108,8 +108,8 @@ public:
   {
   }
 
-  bool hasNext() { return set_ && itr_ != set_->end(); }
-  OBJ_TYPE next() { return *itr_++; }
+  bool hasNext() override { return set_ && itr_ != set_->end(); }
+  OBJ_TYPE next() override { return *itr_++; }
 
 protected:
   const SET_TYPE *set_;

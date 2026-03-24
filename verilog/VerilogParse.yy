@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -44,8 +44,7 @@ void
 sta::VerilogParse::error(const location_type &loc,
                          const std::string &msg)
 {
-  reader->report()->fileError(164,reader->filename(),loc.begin.line,
-                              "%s",msg.c_str());
+  reader->report()->fileError(171,reader->filename(),loc.begin.line, "{}",msg);
 }
 %}
 

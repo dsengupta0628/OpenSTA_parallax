@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -27,8 +27,6 @@
 
 #include "Machine.hh"
 #include "StringUtil.hh"
-#include "StringSet.hh"
-#include "StringSeq.hh"
 #include "PatternMatch.hh"
 #include "Network.hh"
 #include "Liberty.hh"
@@ -53,7 +51,6 @@
 namespace sta {
 
 typedef MinMaxAll MinMaxAllNull;
-typedef std::vector<std::string> StdStringSeq;
 
 #if TCL_MAJOR_VERSION < 9
     typedef int Tcl_Size;
@@ -293,52 +290,33 @@ using namespace sta;
     Tcl_SetResult(interp, nullptr, TCL_STATIC);
 }
 
-%typemap(in) StringSeq* {
-  $1 = tclListSeqConstChar($input, interp);
-}
-
-%typemap(in) StdStringSet* {
+%typemap(in) StringSet* {
   $1 = tclListSetStdString($input, interp);
 }
 
-%typemap(in) StdStringSeq {
+%typemap(in) StringSeq {
   $1 = tclListSeqStdString($input, interp);
 }
 
-%typemap(in) StdStringSeq* {
-  $1 = tclListSeqStdString($input, interp);
+%typemap(in) const StringSeq & (StringSeq seq) {
+  seq = tclListSeqStdString($input, interp);
+  $1 = &seq;
 }
 
-%typemap(out) StringSeq* {
-  StringSeq *strs = $1;
-  Tcl_Obj *list = Tcl_NewListObj(0, nullptr);
-  for (const char *str : *strs) {
-    Tcl_Obj *obj = Tcl_NewStringObj(str, strlen(str));
-    Tcl_ListObjAppendElement(interp, list, obj);
-  }
-  Tcl_SetObjResult(interp, list);
+%typemap(in) StringSeq* {
+  $1 = tclListSeqStdStringPtr($input, interp);
+}
+
+%typemap(in) StringSet* {
+  $1 = tclListSetStdString($input, interp);
+}
+
+%typemap(in) StringSeq {
+  $1 = tclListSeqStdString($input, interp);
 }
 
 %typemap(out) StringSeq {
   StringSeq &strs = $1;
-  Tcl_Obj *list = Tcl_NewListObj(0, nullptr);
-  for (const char *str : strs) {
-    Tcl_Obj *obj = Tcl_NewStringObj(str, strlen(str));
-    Tcl_ListObjAppendElement(interp, list, obj);
-  }
-  Tcl_SetObjResult(interp, list);
-}
-
-%typemap(in) StdStringSet* {
-  $1 = tclListSetStdString($input, interp);
-}
-
-%typemap(in) StdStringSeq {
-  $1 = tclListSeqStdString($input, interp);
-}
-
-%typemap(out) StdStringSeq {
-  StdStringSeq &strs = $1;
   Tcl_Obj *list = Tcl_NewListObj(0, nullptr);
   for (const std::string &str : strs) {
     Tcl_Obj *obj = Tcl_NewStringObj(str.c_str(), str.size());
@@ -466,7 +444,7 @@ using namespace sta;
   const char *arg = Tcl_GetStringFromObj($input, &length);
   Transition *tr = Transition::find(arg);
   if (tr == nullptr) {
-    tclArgError(interp, 2150, "Unknown transition '%s'.", arg);
+    tclArgError(interp, 2150, "Unknown transition '{}'.", arg);
     return TCL_ERROR;
   }
   else
@@ -486,7 +464,7 @@ using namespace sta;
   const char *arg = Tcl_GetStringFromObj($input, &length);
   const RiseFall *rf = RiseFall::find(arg);
   if (rf == nullptr) {
-    tclArgError(interp, 2151, "Unknown rise/fall edge '%s'.", arg);
+    tclArgError(interp, 2151, "Unknown rise/fall edge '{}'.", arg);
     return TCL_ERROR;
   }
   // Swig is retarded and drops const on args.
@@ -497,7 +475,7 @@ using namespace sta;
   const RiseFall *rf = $1;
   const char *str = "";
   if (rf)
-    str = rf->to_string().c_str();
+    str = rf->shortName();
   Tcl_SetResult(interp, const_cast<char*>(str), TCL_STATIC);
 }
 
@@ -506,7 +484,7 @@ using namespace sta;
   const char *arg = Tcl_GetStringFromObj($input, &length);
   const RiseFallBoth *rf = RiseFallBoth::find(arg);
   if (rf == nullptr) {
-    tclArgError(interp, 2152, "Unknown transition name '%s'.", arg);
+    tclArgError(interp, 2152, "Unknown transition name '{}'.", arg);
     return TCL_ERROR;
   }
   // Swig is retarded and drops const on args.
@@ -517,7 +495,7 @@ using namespace sta;
   RiseFallBoth *tr = $1;
   const char *str = "";
   if (tr)
-    str = tr->asString();
+    str = tr->shortName();
   Tcl_SetResult(interp, const_cast<char*>(str), TCL_STATIC);
 }
 
@@ -526,7 +504,7 @@ using namespace sta;
   const char *arg = Tcl_GetStringFromObj($input, &length);
   PortDirection *dir = PortDirection::find(arg);
   if (dir == nullptr) {
-    tclArgError(interp, 2153, "Unknown port direction '%s'.", arg);
+    tclArgError(interp, 2153, "Unknown port direction '{}'.", arg);
     return TCL_ERROR;
   }
   else
@@ -541,7 +519,7 @@ using namespace sta;
     // Swig is retarded and drops const on args.
     $1 = const_cast<TimingRole*>(TimingRole::find(arg));
   else {
-    tclArgError(interp, 2154, "Unknown timing role '%s'.", arg);
+    tclArgError(interp, 2154, "Unknown timing role '{}'.", arg);
     return TCL_ERROR;
   }
 }
@@ -564,7 +542,7 @@ using namespace sta;
   else if (stringEq(arg, "fall") || stringEq(arg, "falling"))
     $1 = LogicValue::fall;
   else {
-    tclArgError(interp, 2155, "Unknown logic value '%s'.", arg);
+    tclArgError(interp, 2155, "Unknown logic value '{}'.", arg);
     return TCL_ERROR;
   }
 }
@@ -579,7 +557,7 @@ using namespace sta;
   else if (stringEq(arg, "on_chip_variation"))
     $1 = AnalysisType::ocv;
   else {
-    tclArgError(interp, 2156, "Unknown analysis type '%s'.", arg);
+    tclArgError(interp, 2156, "Unknown analysis type '{}'.", arg);
     return TCL_ERROR;
   }
 }
@@ -784,7 +762,7 @@ using namespace sta;
         floats->push_back(static_cast<float>(value));
       else {
         delete floats;
-        tclArgError(interp, 2157, "%s is not a floating point number.", arg);
+        tclArgError(interp, 2157, "{} is not a floating point number.", arg);
         return TCL_ERROR;
       }
     }
@@ -829,7 +807,7 @@ using namespace sta;
         ints->push_back(value);
       else {
         delete ints;
-        tclArgError(interp, 2158, "%s is not an integer.", arg);
+        tclArgError(interp, 2158, "{} is not an integer.", arg);
         return TCL_ERROR;
       }
     }
@@ -891,7 +869,7 @@ using namespace sta;
   if (min_max)
     $1 = min_max;
   else {
-    tclArgError(interp, 2159, "%s not min or max.", arg);
+    tclArgError(interp, 2159, "{} not min or max.", arg);
     return TCL_ERROR;
   }
 }
@@ -912,7 +890,7 @@ using namespace sta;
   if (min_max)
     $1 = min_max;
   else {
-    tclArgError(interp, 2160, "%s not min, max or min_max.", arg);
+    tclArgError(interp, 2160, "{} not min, max or min_max.", arg);
     return TCL_ERROR;
   }
 }
@@ -928,7 +906,7 @@ using namespace sta;
     if (min_max)
       $1 = min_max;
     else {
-      tclArgError(interp, 2161, "%s not min, max or min_max.", arg);
+      tclArgError(interp, 2161, "{} not min, max or min_max.", arg);
       return TCL_ERROR;
     }
   }
@@ -950,7 +928,7 @@ using namespace sta;
            || stringEqual(arg, "max"))
     $1 = const_cast<MinMax*>(MinMax::max());
   else {
-    tclArgError(interp, 2162, "%s not setup, hold, min or max.", arg);
+    tclArgError(interp, 2162, "{} not setup, hold, min or max.", arg);
     return TCL_ERROR;
   }
 }
@@ -970,7 +948,7 @@ using namespace sta;
            || stringEqual(arg, "min_max"))
     $1 = const_cast<SetupHoldAll*>(SetupHoldAll::all());
   else {
-    tclArgError(interp, 2163, "%s not setup, hold, setup_hold, min, max or min_max.",
+    tclArgError(interp, 2163, "{} not setup, hold, setup_hold, min, max or min_max.",
                 arg);
     return TCL_ERROR;
   }
@@ -985,7 +963,7 @@ using namespace sta;
   if (early_late)
     $1 = early_late;
   else {
-    tclArgError(interp, 2164, "%s not early/min, late/max or early_late/min_max.", arg);
+    tclArgError(interp, 2164, "{} not early/min, late/max or early_late/min_max.", arg);
     return TCL_ERROR;
   }
 }
@@ -999,7 +977,7 @@ using namespace sta;
   if (early_late)
     $1 = early_late;
   else {
-    tclArgError(interp, 2165, "%s not early/min, late/max or early_late/min_max.", arg);
+    tclArgError(interp, 2165, "{} not early/min, late/max or early_late/min_max.", arg);
     return TCL_ERROR;
   }
 }
@@ -1014,7 +992,7 @@ using namespace sta;
   else if (stringEq(arg, "cell_check"))
     $1 = TimingDerateType::cell_check;
   else {
-    tclArgError(interp, 2166, "%s not net_delay, cell_delay or cell_check.", arg);
+    tclArgError(interp, 2166, "{} not net_delay, cell_delay or cell_check.", arg);
     return TCL_ERROR;
   }
 }
@@ -1027,7 +1005,7 @@ using namespace sta;
   else if (stringEq(arg, "cell_check"))
     $1 = TimingDerateCellType::cell_check;
   else {
-    tclArgError(interp, 2167, "%s not cell_delay or cell_check.", arg);
+    tclArgError(interp, 2167, "{} not cell_delay or cell_check.", arg);
     return TCL_ERROR;
   }
 }
@@ -1040,7 +1018,7 @@ using namespace sta;
   else if (stringEq(arg, "data"))
     $1 = PathClkOrData::data;
   else {
-    tclArgError(interp, 2168, "%s not clk or data.", arg);
+    tclArgError(interp, 2168, "{} not clk or data.", arg);
     return TCL_ERROR;
   }
 }
@@ -1053,7 +1031,7 @@ using namespace sta;
   else if (stringEq(arg, "slack"))
     $1 = sort_by_slack;
   else {
-    tclArgError(interp, 2169, "%s not group or slack.", arg);
+    tclArgError(interp, 2169, "{} not group or slack.", arg);
     return TCL_ERROR;
   }
 }
@@ -1078,7 +1056,7 @@ using namespace sta;
   else if (stringEq(arg, "json"))
     $1 = ReportPathFormat::json;
   else {
-    tclArgError(interp, 2170, "unknown path type %s.", arg);
+    tclArgError(interp, 2170, "unknown path type {}.", arg);
     return TCL_ERROR;
   }
 }
@@ -1137,10 +1115,9 @@ using namespace sta;
   CheckErrorSeq *check_errors = $1;
   for (CheckError *error : *check_errors) {
     Tcl_Obj *string_list = Tcl_NewListObj(0, nullptr);
-    for (const char *str : *error) {
-      size_t str_len = strlen(str);
-      Tcl_Obj *obj = Tcl_NewStringObj(const_cast<char*>(str),
-                                      static_cast<int>(str_len));
+    for (const std::string &str : *error) {
+      Tcl_Obj *obj = Tcl_NewStringObj(str.c_str(),
+                                      static_cast<int>(str.size()));
       Tcl_ListObjAppendElement(interp, string_list, obj);
     }
     Tcl_ListObjAppendElement(interp, error_list, string_list);
@@ -1221,34 +1198,6 @@ using namespace sta;
   Tcl_SetObjResult(interp, obj);
 }
 
-%typemap(out) Delay {
-  Tcl_SetObjResult(interp,Tcl_NewDoubleObj(delayAsFloat($1)));
-}
-
-%typemap(out) Arrival {
-  Tcl_SetObjResult(interp,Tcl_NewDoubleObj(delayAsFloat($1)));
-}
-
-%typemap(out) Required {
-  Tcl_SetObjResult(interp,Tcl_NewDoubleObj(delayAsFloat($1)));
-}
-
-%typemap(out) Slack {
-  Tcl_SetObjResult(interp,Tcl_NewDoubleObj(delayAsFloat($1)));
-}
-
-%typemap(out) ArcDelay {
-  Tcl_SetObjResult(interp,Tcl_NewDoubleObj(delayAsFloat($1)));
-}
-
-%typemap(out) Slew {
-  Tcl_SetObjResult(interp,Tcl_NewDoubleObj(delayAsFloat($1)));
-}
-
-%typemap(out) Crpr {
-  Tcl_SetObjResult(interp,Tcl_NewDoubleObj(delayAsFloat($1)));
-}
-
 %typemap(in) StringSet* {
   $1 = tclListSetConstChar($input, interp);
 }
@@ -1276,7 +1225,7 @@ using namespace sta;
       if (mode)
         seq.push_back(mode);
       else {
-        tclArgError(interp, 2174, "mode %s not found.", mode_name);
+        tclArgError(interp, 2174, "mode {} not found.", mode_name);
         return TCL_ERROR;
       }
     }
@@ -1307,7 +1256,7 @@ using namespace sta;
     if (scene)
       $1 = scene;
     else {
-      tclArgError(interp, 2173, "scene %s not found.", scene_name);
+      tclArgError(interp, 2173, "scene {} not found.", scene_name);
       return TCL_ERROR;
     }
   }
@@ -1336,7 +1285,7 @@ using namespace sta;
       if (scene)
         seq.push_back(scene);
       else {
-        tclArgError(interp, 2172, "scene %s not found.", scene_name);
+        tclArgError(interp, 2172, "scene {} not found.", scene_name);
         return TCL_ERROR;
       }
     }
@@ -1372,8 +1321,8 @@ using namespace sta;
     break;
   case PropertyValue::Type::float_: {
     const Unit *unit = value.unit();
-    const char *float_string = unit->asString(value.floatValue(), 6);
-    Tcl_SetResult(interp, const_cast<char*>(float_string), TCL_VOLATILE);
+    std::string float_string = unit->asString(value.floatValue(), 6);
+    Tcl_SetResult(interp, const_cast<char*>(float_string.c_str()), TCL_VOLATILE);
   }
     break;
   case PropertyValue::Type::bool_: {
@@ -1473,18 +1422,17 @@ using namespace sta;
     PwrActivity activity = value.pwrActivity();
     Tcl_Obj *list = Tcl_NewListObj(0, nullptr);
     Tcl_Obj *obj;
-    const char *str;
 
-    str = stringPrintTmp("%.5e", activity.density());
-    obj = Tcl_NewStringObj(str, strlen(str));
+    std::string density = sta::format("{:.5e}", activity.density());
+    obj = Tcl_NewStringObj(density.c_str(), density.size());
     Tcl_ListObjAppendElement(interp, list, obj);
 
-    str = stringPrintTmp("%.3f", activity.duty());
-    obj = Tcl_NewStringObj(str, strlen(str));
+    std::string duty = sta::format("{:.3f}", activity.duty());
+    obj = Tcl_NewStringObj(duty.c_str(), duty.size());
     Tcl_ListObjAppendElement(interp, list, obj);
 
-    str = activity.originName();
-    obj = Tcl_NewStringObj(str, strlen(str));
+    std::string name = activity.originName();
+    obj = Tcl_NewStringObj(name.c_str(), name.size());
     Tcl_ListObjAppendElement(interp, list, obj);
 
     Tcl_SetObjResult(interp, list);
@@ -1503,7 +1451,7 @@ using namespace sta;
   else if (stringEq(arg, "xyce"))
     $1 = CircuitSim::xyce;
   else {
-    tclArgError(interp, 2171, "unknown circuit simulator %s.", arg);
+    tclArgError(interp, 2171, "unknown circuit simulator {}.", arg);
     return TCL_ERROR;
   }
 }

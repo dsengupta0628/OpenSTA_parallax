@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -152,9 +152,8 @@ TimingArc::intrinsicDelay() const
 {
   GateTimingModel *model = dynamic_cast<GateTimingModel*>(model_);
   if (model) {
-    ArcDelay arc_delay;
-    Slew slew;
-    model->gateDelay(nullptr, 0.0, 0.0, false, arc_delay, slew);
+    float arc_delay, slew;
+    model->gateDelay(nullptr, 0.0, 0.0, arc_delay, slew);
     return arc_delay;
   }
   else

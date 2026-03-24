@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -25,12 +25,13 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 namespace sta {
 
 // Return true if name is a bus.
 bool
-isBusName(const char *name,
+isBusName(std::string_view name,
           const char brkt_left,
           const char brkt_right,
           char escape);
@@ -43,7 +44,7 @@ isBusName(const char *name,
 //  index = bit
 // Caller must delete returned bus_name string.
 void
-parseBusName(const char *name,
+parseBusName(std::string_view name,
              const char brkt_left,
              const char brkt_right,
              char escape,
@@ -53,9 +54,9 @@ parseBusName(const char *name,
              int &index);
 // Allow multiple different left/right bus brackets.
 void
-parseBusName(const char *name,
-             const char *brkts_left,
-             const char *brkts_right,
+parseBusName(std::string_view name,
+             std::string_view brkts_left,
+             std::string_view brkts_right,
              char escape,
              // Return values.
              bool &is_bus,
@@ -66,7 +67,7 @@ parseBusName(const char *name,
 // bus_name is set to null if name is not a range.
 // Caller must delete returned bus_name string.
 void
-parseBusName(const char *name,
+parseBusName(std::string_view name,
              const char brkt_left,
              const char brkt_right,
              char escape,
@@ -81,9 +82,9 @@ parseBusName(const char *name,
 // brkt_lefts and brkt_rights are corresponding strings of legal
 // bus brackets such as "[(<" and "])>".
 void
-parseBusName(const char *name,
-             const char *brkts_left,
-             const char *brkts_right,
+parseBusName(std::string_view name,
+             std::string_view brkts_left,
+             std::string_view brkts_right,
              const char escape,
              // Return values.
              bool &is_bus,
@@ -95,7 +96,7 @@ parseBusName(const char *name,
 
 // Insert escapes before ch1 and ch2 in token.
 std::string
-escapeChars(const char *token,
+escapeChars(std::string_view token,
             const char ch1,
             const char ch2,
             const char escape);

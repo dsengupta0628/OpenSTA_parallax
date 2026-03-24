@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -860,8 +860,6 @@ make_group_path(const char *name,
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
-  if (name[0] == '\0')
-    name = nullptr;
   sta->makeGroupPath(name, is_default, from, thrus, to, comment, sdc);
 }
 
@@ -976,6 +974,14 @@ clock_groups_make_group(ClockGroups *clk_groups,
 }
 
 void
+unset_clock_groups_logically_exclusive()
+{
+  Sta *sta = Sta::sta();
+  Sdc *sdc = sta->cmdSdc();
+  sta->removeClockGroupsLogicallyExclusive(sdc);
+}
+
+void
 unset_clock_groups_logically_exclusive(const char *name)
 {
   Sta *sta = Sta::sta();
@@ -984,11 +990,27 @@ unset_clock_groups_logically_exclusive(const char *name)
 }
 
 void
+unset_clock_groups_physically_exclusive()
+{
+  Sta *sta = Sta::sta();
+  Sdc *sdc = sta->cmdSdc();
+  sta->removeClockGroupsPhysicallyExclusive(sdc);
+}
+
+void
 unset_clock_groups_physically_exclusive(const char *name)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
   sta->removeClockGroupsPhysicallyExclusive(name, sdc);
+}
+
+void
+unset_clock_groups_asynchronous()
+{
+  Sta *sta = Sta::sta();
+  Sdc *sdc = sta->cmdSdc();
+  sta->removeClockGroupsAsynchronous(sdc);
 }
 
 void
@@ -1652,6 +1674,14 @@ void
 set_propagate_all_clocks(bool prop)
 {
   Sta::sta()->setPropagateAllClocks(prop);
+}
+
+bool
+pin_is_constrained(const Pin *pin)
+{
+  Sta *sta = Sta::sta();
+  Sdc *sdc = sta->cmdSdc();
+  return sdc->isConstrained(pin);
 }
 
 %} // inline

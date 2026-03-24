@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -458,8 +458,8 @@ class LibertyCellIterator : public Iterator<LibertyCell*>
 {
 public:
   LibertyCellIterator(const LibertyLibrary *library);
-  bool hasNext();
-  LibertyCell *next();
+  bool hasNext() override;
+  LibertyCell *next() override;
 
 private:
   ConcreteLibraryCellIterator iter_;
@@ -589,7 +589,7 @@ public:
                          LibertyPort *related_port,
                          LibertyPort *related_pg_pin,
                          const std::shared_ptr<FuncExpr> &when,
-                         InternalPowerModels &models);
+                         const InternalPowerModels &models);
   void makeLeakagePower(LibertyPort *related_pg_port,
                         FuncExpr *when,
                         float power);
@@ -715,8 +715,8 @@ class LibertyCellPortIterator : public Iterator<LibertyPort*>
 {
 public:
   LibertyCellPortIterator(const LibertyCell *cell);
-  bool hasNext();
-  LibertyPort *next();
+  bool hasNext() override;
+  LibertyPort *next() override;
 
 private:
   ConcreteCellPortIterator  iter_;
@@ -727,8 +727,8 @@ class LibertyCellPortBitIterator : public Iterator<LibertyPort*>
 public:
   LibertyCellPortBitIterator(const LibertyCell *cell);
   virtual ~LibertyCellPortBitIterator();
-  bool hasNext();
-  LibertyPort *next();
+  bool hasNext() override;
+  LibertyPort *next() override;
 
 private:
   ConcreteCellPortBitIterator *iter_;
@@ -980,8 +980,8 @@ class LibertyPortMemberIterator : public Iterator<LibertyPort*>
 public:
   LibertyPortMemberIterator(const LibertyPort *port);
   virtual ~LibertyPortMemberIterator();
-  virtual bool hasNext();
-  virtual LibertyPort *next();
+  bool hasNext() override;
+  LibertyPort *next() override;
 
 private:
   ConcretePortMemberIterator *iter_;

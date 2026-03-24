@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -410,8 +410,10 @@ const char *
 ConcreteParasiticNode::name(const Network *network) const
 {
   if (is_net_) {
-    const char *net_name = network->pathName(net_pin_.net_);
-    return stringPrintTmp("%s:%d", net_name, id_);
+    std::string name = std::string(network->pathName(net_pin_.net_))
+      + ':'
+      + std::to_string(id_);
+    return makeTmpString(name);
   }
   else
     return network->pathName(net_pin_.pin_);

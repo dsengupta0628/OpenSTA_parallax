@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -30,29 +30,27 @@
 
 namespace sta {
 
-StringSet *
-tclListSetConstChar(Tcl_Obj *const source,
+StringSeq
+tclListSeqStdString(Tcl_Obj *const source,
                     Tcl_Interp *interp)
 {
   Tcl_Size argc;
   Tcl_Obj **argv;
 
+  StringSeq seq;
   if (Tcl_ListObjGetElements(interp, source, &argc, &argv) == TCL_OK) {
-    StringSet *set = new StringSet;
     for (int i = 0; i < argc; i++) {
       int length;
       const char *str = Tcl_GetStringFromObj(argv[i], &length);
-      set->insert(str);
+      seq.push_back(str);
     }
-    return set;
   }
-  else
-    return nullptr;
+  return seq;
 }
 
 StringSeq *
-tclListSeqConstChar(Tcl_Obj *const source,
-                    Tcl_Interp *interp)
+tclListSeqStdStringPtr(Tcl_Obj *const source,
+                       Tcl_Interp *interp)
 {
   Tcl_Size argc;
   Tcl_Obj **argv;
@@ -70,45 +68,7 @@ tclListSeqConstChar(Tcl_Obj *const source,
     return nullptr;
 }
 
-StdStringSeq
-tclListSeqStdString(Tcl_Obj *const source,
-                    Tcl_Interp *interp)
-{
-  Tcl_Size argc;
-  Tcl_Obj **argv;
-
-  StdStringSeq seq;
-  if (Tcl_ListObjGetElements(interp, source, &argc, &argv) == TCL_OK) {
-    for (int i = 0; i < argc; i++) {
-      int length;
-      const char *str = Tcl_GetStringFromObj(argv[i], &length);
-      seq.push_back(str);
-    }
-  }
-  return seq;
-}
-
-StdStringSeq *
-tclListSeqStdStringPtr(Tcl_Obj *const source,
-                       Tcl_Interp *interp)
-{
-  Tcl_Size argc;
-  Tcl_Obj **argv;
-
-  if (Tcl_ListObjGetElements(interp, source, &argc, &argv) == TCL_OK) {
-    StdStringSeq *seq = new StdStringSeq;
-    for (int i = 0; i < argc; i++) {
-      int length;
-      const char *str = Tcl_GetStringFromObj(argv[i], &length);
-      seq->push_back(str);
-    }
-    return seq;
-  }
-  else
-    return nullptr;
-}
-
-StdStringSet *
+StringSet *
 tclListSetStdString(Tcl_Obj *const source,
                     Tcl_Interp *interp)
 {
@@ -116,7 +76,7 @@ tclListSetStdString(Tcl_Obj *const source,
   Tcl_Obj **argv;
 
   if (Tcl_ListObjGetElements(interp, source, &argc, &argv) == TCL_OK) {
-    StdStringSet *set = new StdStringSet;
+    StringSet *set = new StringSet;
     for (int i = 0; i < argc; i++) {
       int length;
       const char *str = Tcl_GetStringFromObj(argv[i], &length);
@@ -210,8 +170,8 @@ tclArcDcalcArg(ArcDcalcArg &gate,
   obj = Tcl_NewStringObj(to_edge, strlen(to_edge));
   Tcl_ListObjAppendElement(interp, list, obj);
 
-  const char *input_delay = delayAsString(gate.inputDelay(), sta, 3);
-  obj = Tcl_NewStringObj(input_delay, strlen(input_delay));
+  std::string input_delay = delayAsString(gate.inputDelay(), sta);
+  obj = Tcl_NewStringObj(input_delay.c_str(), input_delay.size());
   Tcl_ListObjAppendElement(interp, list, obj);
 
   return list;

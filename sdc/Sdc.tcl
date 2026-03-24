@@ -1,5 +1,5 @@
 # OpenSTA, Static Timing Analyzer
-# Copyright (c) 2025, Parallax Software, Inc.
+# Copyright (c) 2026, Parallax Software, Inc.
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1435,11 +1435,11 @@ proc unset_clk_groups_cmd { cmd cmd_args } {
 
   if { $all } {
     if { $logically_exclusive } {
-      unset_clock_groups_logically_exclusive "NULL"
+      unset_clock_groups_logically_exclusive_all
     } elseif { $physically_exclusive } {
-      unset_clock_groups_physically_exclusive "NULL"
+      unset_clock_groups_physically_exclusive_all
     } elseif { $asynchronous } {
-      unset_clock_groups_asynchronous "NULL"
+      unset_clock_groups_asynchronous_all
     }
   } else {
     foreach name $names {

@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -98,7 +98,7 @@ public:
   virtual const char *typeName() const = 0;
   virtual int exceptPathCmp(const PathEnd *path_end,
                             const StaState *sta) const;
-  virtual Arrival dataArrivalTime(const StaState *sta) const;
+  virtual const Arrival &dataArrivalTime(const StaState *sta) const;
   // Arrival time with source clock offset.
   Arrival dataArrivalTimeOffset(const StaState *sta) const;
   virtual Required requiredTime(const StaState *sta) const = 0;
@@ -153,9 +153,13 @@ public:
 
   static bool less(const PathEnd *path_end1,
                    const PathEnd *path_end2,
+                   // Compare slack (if constrained), or arrival when false.
+                   bool cmp_slack,
                    const StaState *sta);
   static int cmp(const PathEnd *path_end1,
                  const PathEnd *path_end2,
+                 // Compare slack (if constrained), or arrival when false.
+                 bool cmp_slack,
                  const StaState *sta);
   static int cmpSlack(const PathEnd *path_end1,
                       const PathEnd *path_end2,
@@ -266,11 +270,6 @@ public:
 protected:
   PathEndClkConstrained(Path *path,
                         Path *clk_path);
-  PathEndClkConstrained(Path *path,
-                        Path *clk_path,
-                        Crpr crpr,
-                        bool crpr_valid);
-
   float sourceClkOffset(const ClockEdge *src_clk_edge,
                         const ClockEdge *tgt_clk_edge,
                         const TimingRole *check_role,
@@ -296,11 +295,6 @@ protected:
   PathEndClkConstrainedMcp(Path *path,
                            Path *clk_path,
                            MultiCyclePath *mcp);
-  PathEndClkConstrainedMcp(Path *path,
-                           Path *clk_path,
-                           MultiCyclePath *mcp,
-                           Crpr crpr,
-                           bool crpr_valid);
   float checkMcpAdjustment(const Path *path,
                            const ClockEdge *tgt_clk_edge,
                            const StaState *sta) const;
@@ -337,13 +331,6 @@ public:
   virtual Delay clkSkew(const StaState *sta);
 
 protected:
-  PathEndCheck(Path *path,
-               TimingArc *check_arc,
-               Edge *check_edge,
-               Path *clk_path,
-               MultiCyclePath *mcp,
-               Crpr crpr,
-               bool crpr_valid);
   Delay sourceClkDelay(const StaState *sta) const;
   virtual Required requiredTimeNoCrpr(const StaState *sta) const;
 
@@ -400,18 +387,6 @@ public:
   virtual bool ignoreClkLatency(const StaState *sta) const;
 
 protected:
-  PathEndLatchCheck(Path *path,
-                    TimingArc *check_arc,
-                    Edge *check_edge,
-                    Path *clk_path,
-                    Path *disable,
-                    MultiCyclePath *mcp,
-                    PathDelay *path_delay,
-                    Delay src_clk_arrival,
-                    Crpr crpr,
-                    bool crpr_valid);
-
-private:
   Path *disable_path_;
   PathDelay *path_delay_;
   // Source clk arrival for set_max_delay -ignore_clk_latency.
@@ -446,12 +421,6 @@ public:
                             const StaState *sta) const;
 
 protected:
-  PathEndOutputDelay(OutputDelay *output_delay,
-                     Path *path,
-                     Path *clk_path,
-                     MultiCyclePath *mcp,
-                     Crpr crpr,
-                     bool crpr_valid);
   Arrival tgtClkDelay(const ClockEdge *tgt_clk_edge,
                       const TimingRole *check_role,
                       const StaState *sta) const;
@@ -487,14 +456,6 @@ public:
                             const StaState *sta) const;
 
 protected:
-  PathEndGatedClock(Path *gating_ref,
-                    Path *clk_path,
-                    const TimingRole *check_role,
-                    MultiCyclePath *mcp,
-                    ArcDelay margin,
-                    Crpr crpr,
-                    bool crpr_valid);
-
   const TimingRole *check_role_;
   ArcDelay margin_;
 };
@@ -521,20 +482,12 @@ public:
   virtual const Path *dataClkPath() const { return data_clk_path_; }
 
 protected:
-  PathEndDataCheck(DataCheck *check,
-                   Path *data_path,
-                   Path *data_clk_path,
-                   Path *clk_path,
-                   MultiCyclePath *mcp,
-                   Crpr crpr,
-                   bool crpr_valid);
   Path *clkPath(Path *path,
                 const StaState *sta);
   Arrival requiredTimeNoCrpr(const StaState *sta) const;
   // setup uses zero cycle default
   virtual int setupDefaultCycles() const { return 0; }
 
-private:
   Path *data_clk_path_;
   DataCheck *check_;
 };
@@ -584,15 +537,6 @@ public:
   virtual bool ignoreClkLatency(const StaState *sta) const;
 
 protected:
-  PathEndPathDelay(PathDelay *path_delay,
-                   Path *path,
-                   Path *clk_path,
-                   TimingArc *check_arc,
-                   Edge *check_edge,
-                   OutputDelay *output_delay,
-                   Arrival src_clk_arrival,
-                   Crpr crpr,
-                   bool crpr_valid);
   void findSrcClkArrival(const StaState *sta);
 
   PathDelay *path_delay_;
@@ -611,11 +555,13 @@ protected:
 class PathEndLess
 {
 public:
-  PathEndLess(const StaState *sta);
+  PathEndLess(bool cmp_slack,
+              const StaState *sta);
   bool operator()(const PathEnd *path_end1,
                   const PathEnd *path_end2) const;
 
 protected:
+  bool cmp_slack_;
   const StaState *sta_;
 };
 
@@ -623,11 +569,13 @@ protected:
 class PathEndSlackLess
 {
 public:
-  PathEndSlackLess(const StaState *sta);
+  PathEndSlackLess(bool cmp_slack,
+                   const StaState *sta);
   bool operator()(const PathEnd *path_end1,
                   const PathEnd *path_end2) const;
 
 protected:
+  bool cmp_slack_;
   const StaState *sta_;
 };
 

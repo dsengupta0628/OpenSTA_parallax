@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@
 
 namespace sta {
 
-size_t PathGroup::group_path_count_max = std::numeric_limits<size_t>::max();
+int PathGroup::group_path_count_max = std::numeric_limits<int>::max();
 
 PathGroup *
 PathGroup::makePathGroupSlack(const char *name,
@@ -82,8 +82,8 @@ PathGroup::makePathGroupArrival(const char *name,
 }
 
 PathGroup::PathGroup(const char *name,
-                     size_t group_path_count,
-                     size_t endpoint_path_count,
+                     int group_path_count,
+                     int endpoint_path_count,
                      bool unique_pins,
                      bool unique_edges,
                      float slack_min,
@@ -99,7 +99,7 @@ PathGroup::PathGroup(const char *name,
   slack_min_(slack_min),
   slack_max_(slack_max),
   min_max_(min_max),
-  compare_slack_(cmp_slack),
+  cmp_slack_(cmp_slack),
   threshold_(min_max->initValue()),
   sta_(sta)
 {
@@ -118,15 +118,15 @@ PathGroup::saveable(PathEnd *path_end)
     LockGuard lock(lock_);
     threshold = threshold_;
   }
-  if (compare_slack_) {
+  if (cmp_slack_) {
     // Crpr increases the slack, so check the slack
     // without crpr first because it is expensive to find.
-    Slack slack = path_end->slackNoCrpr(sta_);
-    if (!delayIsInitValue(slack, min_max_)
-        && delayLessEqual(slack, threshold, sta_)
-        && delayLessEqual(slack, slack_max_, sta_)) {
+    Slack slack_no_crpr = path_end->slackNoCrpr(sta_);
+    if (!delayIsInitValue(slack_no_crpr, min_max_)
+        && delayLessEqual(slack_no_crpr, threshold, sta_)
+        && delayLessEqual(slack_no_crpr, slack_max_, sta_)) {
       // Now check with crpr.
-      slack = path_end->slack(sta_);
+      Slack slack = path_end->slack(sta_);
       return delayLessEqual(slack, threshold, sta_)
         && delayLessEqual(slack, slack_max_, sta_)
         && delayGreaterEqual(slack, slack_min_, sta_);
@@ -148,7 +148,7 @@ PathGroup::saveable(PathEnd *path_end)
 bool
 PathGroup::enumMinSlackUnderMin(PathEnd *path_end)
 {
-  if (compare_slack_
+  if (cmp_slack_
       && endpoint_path_count_ > 1
       && slack_min_ > -INF) {
     const Path *path = path_end->path();
@@ -178,9 +178,9 @@ PathGroup::insert(PathEnd *path_end)
 {
   LockGuard lock(lock_);
   path_ends_.push_back(path_end);
-  path_end->setPathGroup(this);
+   path_end->setPathGroup(this);
   if (group_path_count_ != group_path_count_max
-      && path_ends_.size() > group_path_count_ * 2)
+      && path_ends_.size() > static_cast<size_t>(group_path_count_) * 2)
     prune();
 }
 
@@ -195,8 +195,8 @@ PathGroup::prune()
     Vertex *vertex = path_end->vertex(sta_);
     // Squish up to endpoint_path_count path ends per vertex
     // up to the front of path_ends_.
-    if (end_count < group_path_count_
-        && path_counts[vertex] < endpoint_path_count_) {
+    if (end_count < static_cast<size_t>(group_path_count_)
+        && path_counts[vertex] < static_cast<size_t>(endpoint_path_count_)) {
       path_ends_[end_count++] = path_end;
       path_counts[vertex]++;
     }
@@ -208,7 +208,7 @@ PathGroup::prune()
   // Set a threshold to the bottom of the sorted list that future
   // inserts need to beat.
   PathEnd *last_end = path_ends_[end_count - 1];
-  if (compare_slack_)
+  if (cmp_slack_)
     threshold_ = delayAsFloat(last_end->slack(sta_));
   else
     threshold_ = delayAsFloat(last_end->dataArrivalTime(sta_));
@@ -225,7 +225,7 @@ PathGroup::pushEnds(PathEndSeq &path_ends)
 void
 PathGroup::ensureSortedMaxPaths()
 {
-  if (path_ends_.size() > group_path_count_)
+  if (path_ends_.size() > static_cast<size_t>(group_path_count_))
     prune();
   else
     sort();
@@ -234,14 +234,14 @@ PathGroup::ensureSortedMaxPaths()
 void
 PathGroup::sort()
 {
-  sta::sort(path_ends_, PathEndLess(sta_));
+  sta::sort(path_ends_, PathEndLess(cmp_slack_, sta_));
 }
 
 void
 PathGroup::clear()
 {
-  LockGuard lock(lock_);
   threshold_ = min_max_->initValue();
+  LockGuard lock(lock_);
   path_ends_.clear();
 }
 
@@ -258,7 +258,7 @@ PathGroups::PathGroups(int group_path_count,
                        bool unique_edges,
                        float slack_min,
                        float slack_max,
-                       StdStringSeq &group_names,
+                       StringSeq &group_names,
                        bool setup,
                        bool hold,
                        bool recovery,
@@ -276,7 +276,7 @@ PathGroups::PathGroups(int group_path_count,
   slack_min_(slack_min),
   slack_max_(slack_max)
 {
-  StdStringSet groups;
+  StringSet groups;
   for (std::string &group_name : group_names)
     groups.insert(group_name);
 
@@ -297,7 +297,7 @@ PathGroups::makeGroups(int group_path_count,
                        bool unique_edges,
                        float slack_min,
                        float slack_max,
-                       StdStringSet &group_names,
+                       StringSet &group_names,
                        bool setup_hold,
                        bool async,
                        bool gated_clk,
@@ -309,7 +309,7 @@ PathGroups::makeGroups(int group_path_count,
     const Sdc *sdc = mode_->sdc();
     for (const auto& [name, group] : sdc->groupPaths()) {
       if (reportGroup(name, group_names)) {
-        PathGroup *group = PathGroup::makePathGroupSlack(name,
+        PathGroup *group = PathGroup::makePathGroupSlack(name.c_str(),
                                                          group_path_count,
                                                          endpoint_path_count,
                                                          unique_pins,
@@ -394,7 +394,7 @@ PathGroups::~PathGroups()
 }
 
 PathGroup *
-PathGroups::findPathGroup(const char *name,
+PathGroups::findPathGroup(const std::string &name,
                           const MinMax *min_max) const
 {
   auto itr = named_map_[min_max->index()].find(name);
@@ -416,8 +416,8 @@ PathGroups::findPathGroup(const Clock *clock,
 }
 
 bool
-PathGroups::reportGroup(const char *group_name,
-                        StdStringSet &group_names) const
+PathGroups::reportGroup(const std::string &group_name,
+                        StringSet &group_names) const
 {
   return group_names.empty()
     || group_names.contains(group_name);
@@ -441,7 +441,7 @@ PathGroups::pathGroups(const PathEnd *path_end) const
           path_groups.push_back(path_delay_[mm_index]);
       }
       else {
-        const char *group_name = group_path->name();
+        std::string group_name = group_path->name();
         PathGroup *group = findPathGroup(group_name, min_max);
         if (group)
           path_groups.push_back(group);
@@ -479,11 +479,11 @@ PathGroups::pathGroups(const PathEnd *path_end) const
 }
 
 // Mirrors PathGroups::pathGroup.
-StdStringSeq
+StringSeq
 PathGroups::pathGroupNames(const PathEnd *path_end,
                            const StaState *sta)
 {
-  StdStringSeq group_names;
+  StringSeq group_names;
   const char *group_name = nullptr;
   const Search *search = sta->search();
   ExceptionPathSeq group_paths = search->groupPathsTo(path_end);
@@ -552,7 +552,7 @@ PathGroups::pushEnds(PathEndSeq &path_ends)
   for (const MinMax *min_max : MinMax::range()) {
     int mm_index =  min_max->index();
     for (std::string &group_name : pathGroupNames()) {
-      PathGroup *path_group = findPathGroup(group_name.c_str(), min_max);
+      PathGroup *path_group = findPathGroup(group_name, min_max);
       if (path_group)
         path_group->pushEnds(path_ends);
     }
@@ -576,14 +576,14 @@ PathGroups::pushEnds(PathEndSeq &path_ends)
   }
 }
 
-StdStringSeq
+StringSeq
 PathGroups::pathGroupNames()
 {
   std::set<std::string> group_names1;
   const Sdc *sdc = mode_->sdc();
   for (const auto& [name, group] : sdc->groupPaths())
     group_names1.insert(name);
-  StdStringSeq group_names2;
+  StringSeq group_names2;
   for (const std::string &name : group_names1)
     group_names2.push_back(name);
   sort(group_names2);
@@ -632,9 +632,8 @@ PathGroups::makePathEnds(ExceptionTo *to,
                     unique_pins_, unique_edges_, scenes, min_max);
 
   pushEnds(path_ends);
-  if (sort_by_slack) {
-    sort(path_ends, PathEndLess(this));
-  }
+  if (sort_by_slack)
+    sort(path_ends, PathEndLess(true, this));
 
   if (unconstrained_paths
       && path_ends.empty())
@@ -653,9 +652,9 @@ class MakePathEnds1 : public PathEndVisitor
 public:
   MakePathEnds1(PathGroups *path_groups);
   MakePathEnds1(const MakePathEnds1&) = default;
-  virtual PathEndVisitor *copy() const;
-  virtual void visit(PathEnd *path_end);
-  virtual void vertexEnd(Vertex *vertex);
+  PathEndVisitor *copy() const override;
+  void visit(PathEnd *path_end) override;
+  void vertexEnd(Vertex *vertex) override;
 
 private:
   void visitPathEnd(PathEnd *path_end,
@@ -663,12 +662,12 @@ private:
 
   PathGroups *path_groups_;
   PathGroupEndMap ends_;
-  PathEndLess cmp_;
+  PathEndLess less_;
 };
 
 MakePathEnds1::MakePathEnds1(PathGroups *path_groups) :
   path_groups_(path_groups),
-  cmp_(path_groups)
+  less_(true, path_groups)
 {
 }
 
@@ -693,7 +692,7 @@ MakePathEnds1::visitPathEnd(PathEnd *path_end,
     // Only keep the path end with the smallest slack/latest arrival.
     PathEnd *worst_end = findKey(ends_, group);
     if (worst_end) {
-      if (cmp_(path_end, worst_end)) {
+      if (less_(path_end, worst_end)) {
         ends_[group] = path_end->copy();
         delete worst_end;
       }
@@ -728,10 +727,10 @@ public:
   MakePathEndsAll(int endpoint_path_count,
                   PathGroups *path_groups);
   MakePathEndsAll(const MakePathEndsAll&) = default;
-  virtual ~MakePathEndsAll();
-  virtual PathEndVisitor *copy() const;
-  virtual void visit(PathEnd *path_end);
-  virtual void vertexEnd(Vertex *vertex);
+  ~MakePathEndsAll() override;
+  PathEndVisitor *copy() const override;
+  void visit(PathEnd *path_end) override;
+  void vertexEnd(Vertex *vertex) override;
 
 private:
   void visitPathEnd(PathEnd *path_end,
@@ -741,8 +740,8 @@ private:
   PathGroups *path_groups_;
   const StaState *sta_;
   PathGroupEndsMap ends_;
-  PathEndSlackLess slack_cmp_;
-  PathEndNoCrprLess path_no_crpr_cmp_;
+  PathEndSlackLess less_;
+  PathEndNoCrprLess path_no_crpr_less_;
 };
 
 MakePathEndsAll::MakePathEndsAll(int endpoint_path_count,
@@ -750,8 +749,8 @@ MakePathEndsAll::MakePathEndsAll(int endpoint_path_count,
   endpoint_path_count_(endpoint_path_count),
   path_groups_(path_groups),
   sta_(path_groups),
-  slack_cmp_(path_groups),
-  path_no_crpr_cmp_(path_groups)
+  less_(true, path_groups),
+  path_no_crpr_less_(path_groups)
 {
 }
 
@@ -792,8 +791,8 @@ MakePathEndsAll::vertexEnd(Vertex *)
   Debug *debug = sta_->debug();
   for (auto [group, ends] : ends_) {
     if (ends) {
-      sort(ends, slack_cmp_);
-      PathEndNoCrprSet unique_ends(path_no_crpr_cmp_);
+      sort(ends, less_);
+      PathEndNoCrprSet unique_ends(path_no_crpr_less_);
       auto end_iter = ends->begin();
       int n = 0;
       while (end_iter != ends->end()
@@ -802,10 +801,10 @@ MakePathEndsAll::vertexEnd(Vertex *)
         // Only save the worst path end for each crpr tag.
         // PathEnum will peel the others.
         if (!unique_ends.contains(path_end)) {
-          debugPrint(debug, "path_group", 2, "insert %s %s %s %d",
-                     path_end->vertex(sta_)->to_string(sta_).c_str(),
+          debugPrint(debug, "path_group", 2, "insert {} {} {} {}",
+                     path_end->vertex(sta_)->to_string(sta_),
                      path_end->typeName(),
-                     path_end->transition(sta_)->to_string().c_str(),
+                     path_end->transition(sta_)->shortName(),
                      path_end->path()->tag(sta_)->index());
           // Give the group a copy of the path end because
           // it may delete it during pruning.
@@ -817,10 +816,10 @@ MakePathEndsAll::vertexEnd(Vertex *)
           }
         }
         else
-          debugPrint(debug, "path_group", 3, "prune %s %s %s %d",
-                     path_end->vertex(sta_)->to_string(sta_).c_str(),
+          debugPrint(debug, "path_group", 3, "prune {} {} {} {}",
+                     path_end->vertex(sta_)->to_string(sta_),
                      path_end->typeName(),
-                     path_end->transition(sta_)->to_string().c_str(),
+                     path_end->transition(sta_)->shortName(),
                      path_end->path()->tag(sta_)->index());
       }
       // Clear ends for next vertex.
@@ -961,8 +960,8 @@ public:
                        const StaState *sta);
   MakeEndpointPathEnds(const MakeEndpointPathEnds &make_path_ends);
   ~MakeEndpointPathEnds();
-  virtual VertexVisitor *copy() const;
-  virtual void visit(Vertex *vertex);
+  VertexVisitor *copy() const override;
+  void visit(Vertex *vertex) override;
 
 private:
   VisitPathEnds visit_path_ends_;

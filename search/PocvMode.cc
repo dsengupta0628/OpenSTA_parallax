@@ -22,15 +22,27 @@
 // 
 // This notice may not be removed or altered from any source distribution.
 
-#include "StringSet.hh"
+#include "PocvMode.hh"
+
+#include "EnumNameMap.hh"
 
 namespace sta {
 
-void
-deleteContents(StringSet *strings)
+static EnumNameMap<PocvMode> pocv_mode_map =
+  {{PocvMode::scalar, "scalar"},
+   {PocvMode::normal, "normal"},
+   {PocvMode::skew_normal, "skew_normal"}};
+
+const char *
+pocvModeName(PocvMode mode)
 {
-  for (const char *string : *strings)
-    stringDelete(string);
+  return pocv_mode_map.find(mode);
+}
+
+PocvMode
+findPocvMode(const char *mode_name)
+{
+  return pocv_mode_map.find(mode_name, PocvMode::scalar);
 }
 
 } // namespace

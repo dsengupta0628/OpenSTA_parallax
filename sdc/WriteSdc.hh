@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -22,19 +22,26 @@
 // 
 // This notice may not be removed or altered from any source distribution.
 
-#include "Machine.hh"
-#include "StringUtil.hh"
-#include "Units.hh"
-#include "StaState.hh"
-#include "Delay.hh"
+#pragma once
+
+#include "NetworkClass.hh"
+#include "SdcClass.hh"
 
 namespace sta {
 
-const char *
-delayAsString(const Delay &delay,
-              const StaState *sta)
-{
-  return delayAsString(delay, sta, sta->units()->timeUnit()->digits());
-}
+// Write SDC to a file.
+// Allow SDC to apply to an instance to support write_context.
+void
+writeSdc(const Sdc *sdc,
+         Instance *instance,
+         const char *filename,
+         const char *creator,
+         // Map hierarchical pins and instances to leaf pins and instances.
+         bool map_hpins,
+         // Replace non-sdc get functions with OpenSTA equivalents.
+         bool native,
+         int digits,
+         bool gzip,
+         bool no_timestamp);
 
 } // namespace

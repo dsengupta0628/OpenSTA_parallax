@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -29,14 +29,14 @@
 
 namespace sta {
 
-ClockGroups::ClockGroups(const char *name,
+ClockGroups::ClockGroups(const std::string &name,
                          bool logically_exclusive,
                          bool physically_exclusive,
                          bool asynchronous,
                          bool allow_paths,
                          const char *comment) :
   SdcCmdComment(comment),
-  name_(stringCopy(name)),
+  name_(name),
   logically_exclusive_(logically_exclusive),
   physically_exclusive_(physically_exclusive),
   asynchronous_(asynchronous),
@@ -46,7 +46,6 @@ ClockGroups::ClockGroups(const char *name,
 
 ClockGroups::~ClockGroups()
 {
-  stringDelete(name_);
   deleteContents(groups_);
 }
 

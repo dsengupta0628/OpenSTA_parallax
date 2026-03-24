@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -72,16 +72,16 @@ protected:
   void thresholdAdjust(const Pin *load_pin,
                        const LibertyLibrary *drvr_library,
                        const RiseFall *rf,
-                       ArcDelay &load_delay,
-                       Slew &load_slew);
+                       double &load_delay,
+                       double &load_slew);
   // Helper function for input ports driving dspf parasitic.
   void dspfWireDelaySlew(const Pin *load_pin,
                          const RiseFall *rf,
-                         Slew drvr_slew,
+                         double drvr_slew,
                          float elmore,
                          // Return values.
-                         ArcDelay &wire_delay,
-                         Slew &load_slew);
+                         double &wire_delay,
+                         double &load_slew);
   const Pvt *pinPvt(const Pin *pin,
                     const Scene *scene,
                     const MinMax *min_max);

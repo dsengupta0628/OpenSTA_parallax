@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -60,8 +60,9 @@ ArcDcalcWaveforms::inputWaveform(ArcDcalcArg &dcalc_arg,
       bool vdd_exists;
       library->supplyVoltage("VDD", vdd, vdd_exists);
       if (!vdd_exists)
-        report->error(1751, "VDD not defined in library %s", library->name());
-      Waveform in_waveform = driver_waveform->waveform(delayAsFloat(in_slew));
+        report->error(1751, "VDD not defined in library {}", library->name());
+      float slew1 = delayAsFloat(in_slew, min_max, sta);
+      Waveform in_waveform = driver_waveform->waveform(slew1);
       // Delay time axis.
       FloatSeq time_values;
       for (float time : in_waveform.axis1()->values())

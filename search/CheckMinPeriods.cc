@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -198,7 +198,7 @@ MinPeriodSlackLess::operator()(const MinPeriodCheck &check1,
   const Pin *pin2 = check2.pin();
   return delayLess(slack1, slack2, sta_)
     // Break ties based on pin and clock names.
-    || (delayEqual(slack1, slack2)
+    || (delayEqual(slack1, slack2, sta_)
         && (sta_->network()->pinLess(pin1, pin2)
             || (pin1 == pin2
                 && ClockNameLess()(check1.clk(),

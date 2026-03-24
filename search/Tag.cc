@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -104,8 +104,7 @@ Tag::to_string(bool report_index,
   if (report_rf_min_max) {
     const RiseFall *rf = transition();
     const MinMax *min_max = minMax();
-    result += rf->to_string();
-    result += " ";
+    result += rf->shortName();
     result += min_max->to_string();
     result += " ";
   }
@@ -161,10 +160,10 @@ Tag::to_string(bool report_index,
     for (ExceptionState *state : *states_) {
       ExceptionPath *exception = state->exception();
       result += " ";
-      result += exception->asString(network);
+      result += exception->to_string(network);
       if (state->nextThru()) {
         result += " (next thru ";
-        result += state->nextThru()->asString(network);
+        result += state->nextThru()->to_string(network);
         result += ")";
       }
       else {

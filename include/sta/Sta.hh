@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -29,7 +29,6 @@
 #include <string_view>
 #include <functional>
 
-#include "StringSeq.hh"
 #include "StringUtil.hh"
 #include "LibertyClass.hh"
 #include "NetworkClass.hh"
@@ -126,11 +125,11 @@ public:
   void setThreadCount(int thread_count);
 
   // define_corners compatibility.
-  void makeScenes(StringSeq *scene_names);
+  void makeScenes(const StringSeq &scene_names);
   void makeScene(const std::string &name,
                  const std::string &mode_name,
-                 const StdStringSeq &liberty_min_files,
-                 const StdStringSeq &liberty_max_files,
+                 const StringSeq &liberty_min_files,
+                 const StringSeq &liberty_max_files,
                  const std::string &spef_min_file,
                  const std::string &spef_max_file);
   Scene *findScene(const std::string &name) const;
@@ -435,19 +434,21 @@ public:
                               const RiseFallBoth *to_rf,
                               const SetupHoldAll *setup_hold,
                               Sdc *sdc);
-  ClockGroups *makeClockGroups(const char *name,
+  ClockGroups *makeClockGroups(const std::string &name,
                                bool logically_exclusive,
                                bool physically_exclusive,
                                bool asynchronous,
                                bool allow_paths,
                                const char *comment,
                                Sdc *sdc);
-  // nullptr name removes all.
-  void removeClockGroupsLogicallyExclusive(const char *name,
+  void removeClockGroupsLogicallyExclusive(Sdc *sdc);
+  void removeClockGroupsLogicallyExclusive(const std::string &name,
                                            Sdc *sdc);
-  void removeClockGroupsPhysicallyExclusive(const char *name,
+  void removeClockGroupsPhysicallyExclusive(Sdc *sdc);
+  void removeClockGroupsPhysicallyExclusive(const std::string &name,
                                             Sdc *sdc);
-  void removeClockGroupsAsynchronous(const char *name,
+  void removeClockGroupsAsynchronous(Sdc *sdc);
+  void removeClockGroupsAsynchronous(const std::string &name,
                                      Sdc *sdc);
   void makeClockGroup(ClockGroups *clk_groups,
                       ClockSet *clks,
@@ -641,7 +642,7 @@ public:
                      float delay,
                      const char *comment,
                      Sdc *sdc);
-  void makeGroupPath(const char *name,
+  void makeGroupPath(const std::string &name,
                      bool is_default,
                      ExceptionFrom *from,
                      ExceptionThruSeq *thrus,
@@ -653,7 +654,7 @@ public:
                        const Sdc *sdc) __attribute__ ((deprecated));
   bool isPathGroupName(const char *group_name,
                        const Sdc *sdc) const;
-  StdStringSeq pathGroupNames(const Sdc *sdc) const;
+  StringSeq pathGroupNames(const Sdc *sdc) const;
   void resetPath(ExceptionFrom *from,
                  ExceptionThruSeq *thrus,
                  ExceptionTo *to,
@@ -966,7 +967,7 @@ public:
                           bool sort_by_slack,
                           // Path groups to report.
                           // Empty list reports all groups.
-                          StdStringSeq &group_names,
+                          StringSeq &group_names,
                           // Predicates to filter the type of path
                           // ends returned.
                           bool setup,
@@ -976,18 +977,18 @@ public:
                           bool clk_gating_setup,
                           bool clk_gating_hold);
   void setReportPathFormat(ReportPathFormat format);
-  void setReportPathFieldOrder(StringSeq *field_names);
+  void setReportPathFieldOrder(const StringSeq &field_names);
   void setReportPathFields(bool report_input_pin,
                            bool report_hier_pins,
                            bool report_net,
                            bool report_cap,
                            bool report_slew,
                            bool report_fanout,
+                           bool report_variation,
                            bool report_src_attr);
   ReportField *findReportPathField(const char *name);
   void setReportPathDigits(int digits);
   void setReportPathNoSplit(bool no_split);
-  void setReportPathSigmas(bool report_sigmas);
   void reportPathEnd(PathEnd *end);
   void reportPathEnds(PathEndSeq *ends);
   ReportPath *reportPath() { return report_path_; }
@@ -999,7 +1000,7 @@ public:
                      const SetupHold *setup_hold,
                      bool include_internal_latency,
                      int digits);
-  float findWorstClkSkew(const SetupHold *setup_hold,
+  Delay findWorstClkSkew(const SetupHold *setup_hold,
                          bool include_internal_latency);
 
   void reportClkLatency(ConstClockSeq &clks,
@@ -1127,12 +1128,15 @@ public:
 
   void reportArrivalWrtClks(const Pin *pin,
                             const Scene *scene,
+                            bool report_variance,
                             int digits);
   void reportRequiredWrtClks(const Pin *pin,
                              const Scene *scene,
+                             bool report_variance,
                              int digits);
   void reportSlackWrtClks(const Pin *pin,
                           const Scene *scene,
+                          bool report_variance,
                           int digits);
 
   Slew slew(Vertex *vertex,
@@ -1140,9 +1144,9 @@ public:
             const SceneSeq &scenes,
             const MinMax *min_max);
 
-  ArcDelay arcDelay(Edge *edge,
-                    TimingArc *arc,
-                    DcalcAPIndex ap_index);
+  const ArcDelay arcDelay(Edge *edge,
+                          TimingArc *arc,
+                          DcalcAPIndex ap_index);
   // True if the timing arc has been back-annotated.
   bool arcDelayAnnotated(Edge *edge,
                          TimingArc *arc,
@@ -1383,7 +1387,7 @@ public:
                       LibertyLibrarySeq *map_libs);
   LibertyCellSeq *equivCells(LibertyCell *cell);
 
-  void writePathSpice(Path *path,
+  void writePathSpice(const Path *path,
                       const char *spice_filename,
                       const char *subckt_filename,
                       const char *lib_subckt_filename,
@@ -1404,12 +1408,13 @@ public:
   // TCL variable sta_crpr_mode.
   CrprMode crprMode() const;
   void setCrprMode(CrprMode mode);
-  // TCL variable sta_pocv_enabled.
+  // TCL variable sta_pocv_mode.
   // Parametric on chip variation (statisical sta).
-  bool pocvEnabled() const;
-  void setPocvEnabled(bool enabled);
+  PocvMode pocvMode() const;
+  void setPocvMode(PocvMode mode);
   // Number of std deviations from mean to use for normal distributions.
-  void setSigmaFactor(float factor);
+  float pocvQuantile();
+  void setPocvQuantile(float quantile);
   // TCL variable sta_propagate_gated_clock_enable.
   // Propagate gated clock enable arrivals.
   bool propagateGatedClockEnable() const;
@@ -1506,17 +1511,20 @@ protected:
 
   void reportDelaysWrtClks(const Pin *pin,
                            const Scene *scene,
+                           bool report_variance,
                            int digits,
                            bool find_required,
                            PathDelayFunc get_path_delay);
   void reportDelaysWrtClks(Vertex *vertex,
                            const Scene *scene,
+                           bool report_variance,
                            int digits,
                            bool find_required,
                            PathDelayFunc get_path_delay);
   void reportDelaysWrtClks(Vertex *vertex,
                            const ClockEdge *clk_edge,
                            const Scene *scene,
+                           bool report_variance,
                            int digits,
                            PathDelayFunc get_path_delay);
   RiseFallMinMaxDelay findDelaysWrtClks(Vertex *vertex,
@@ -1526,6 +1534,7 @@ protected:
   std::string formatDelay(const RiseFall *rf,
                           const MinMax *min_max,
                           const RiseFallMinMaxDelay &delays,
+                          bool report_variance,
                           int digits);
 
   void connectDrvrPinAfter(Vertex *vertex);
@@ -1583,8 +1592,8 @@ protected:
   void setThreadCount1(int thread_count);
   void updateLibertyScenes();
   void updateSceneLiberty(Scene *scene,
-                          const StdStringSeq &liberty_min_files,
-                          const StdStringSeq &liberty_max_files);
+                          const StringSeq &liberty_min_files,
+                          const StringSeq &liberty_max_files);
 
   Scene *makeScene(const std::string &name,
                    Mode *mode,

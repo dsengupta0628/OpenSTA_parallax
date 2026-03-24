@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 
 #include "CheckTiming.hh"
 
-#include "ContainerHelpers.hh"
 #include "Error.hh"
 #include "TimingRole.hh"
 #include "Network.hh"
@@ -64,7 +63,6 @@ void
 CheckTiming::deleteErrors()
 {
   for (CheckError *error : errors_) {
-    deleteContents(error);
     delete error;
   }
 }
@@ -125,8 +123,7 @@ CheckTiming::checkNoInputDelay()
     }
   }
   delete pin_iter;
-  pushPinErrors("Warning: There %is %d input port%s missing set_input_delay.",
-                no_arrival);
+  pushPinErrors("Warning: There {} {} input port{} missing set_input_delay.",no_arrival);
 }
 
 void
@@ -134,7 +131,7 @@ CheckTiming::checkNoOutputDelay()
 {
   PinSet no_departure(network_);
   checkNoOutputDelay(no_departure);
-  pushPinErrors("Warning: There %is %d output port%s missing set_output_delay.",
+  pushPinErrors("Warning: There {} {} output port{} missing set_output_delay.",
                 no_departure);
 }
 
@@ -181,10 +178,22 @@ CheckTiming::checkRegClks(bool reg_multiple_clks,
     if (reg_multiple_clks && clks && clks->size() > 1)
       multiple_clk_pins.insert(pin);
   }
-  pushPinErrors("Warning: There %is %d unclocked register/latch pin%s.",
+  pushPinErrors("Warning: There {} {} unclocked register/latch pin{}.",
                 no_clk_pins);
-  pushPinErrors("Warning: There %is %d register/latch pin%s with multiple clocks.",
+  pushPinErrors("Warning: There {} {} register/latch pin{} with multiple clocks.",
                 multiple_clk_pins);
+}
+
+static const char *
+plurality(int n)
+{
+  return n == 1 ? "is" : "are";
+}
+
+static const char *
+pluralSuffix(int n)
+{
+  return n == 1 ? "" : "s";
 }
 
 void
@@ -200,29 +209,27 @@ CheckTiming::checkLoops()
       loop_count++;
   }
   if (loop_count > 0) {
-   std::string error_msg;
-   errorMsgSubst("Warning: There %is %d combinational loop%s in the design.",
-                  loop_count, error_msg);
     CheckError *error = new CheckError;
-    error->push_back(stringCopy(error_msg.c_str()));
+    error->push_back(sta::format("Warning: There {} {} combinational loop{} in the design.",
+                                 plurality(loop_count),
+                                 loop_count,
+                                 pluralSuffix(loop_count)));
 
     for (GraphLoop *loop : loops) {
       if (loop->isCombinational()) {
         Edge *last_edge = nullptr;
         for (Edge *edge : *loop->edges()) {
           Pin *pin = edge->from(graph_)->pin();
-          const char *pin_name = stringCopy(sdc_network_->pathName(pin));
-          error->push_back(pin_name);
+          error->push_back(sdc_network_->pathName(pin));
           last_edge = edge;
         }
         if (last_edge) {
-          error->push_back(stringCopy("| loop cut point"));
+          error->push_back("| loop cut point");
           const Pin *pin = last_edge->to(graph_)->pin();
-          const char *pin_name = stringCopy(sdc_network_->pathName(pin));
-          error->push_back(pin_name);
+          error->push_back(sdc_network_->pathName(pin));
 
           // Separator between loops.
-          error->push_back(stringCopy("--------------------------------"));
+          error->push_back("--------------------------------");
         }
       }
     }
@@ -236,7 +243,7 @@ CheckTiming::checkUnconstrainedEndpoints()
   PinSet unconstrained_ends(network_);
   checkUnconstrainedOutputs(unconstrained_ends);
   checkUnconstrainedSetups(unconstrained_ends);
-  pushPinErrors("Warning: There %is %d unconstrained endpoint%s.",
+  pushPinErrors("Warning: There {} {} unconstrained endpoint{}.",
                 unconstrained_ends);
 }
 
@@ -342,35 +349,26 @@ CheckTiming::checkGeneratedClocks()
         gen_clk_errors.insert(clk);
     }
   }
-  pushClkErrors("Warning: There %is %d generated clock%s that %is not connected to a clock source.",
+  pushClkErrors("Warning: There {} {} generated clock{} not connected to a clock source.",
                 gen_clk_errors);
 }
 
 // Report the "msg" error for each pin in "pins".
-//
-// Substitutions in msg are done as follows if the pin count is one
-// or greater than one.
-// %is - is/are
-// %d  - pin count
-// %s  - s/""
-// %a  - a/""
 void
-CheckTiming::pushPinErrors(const char *msg,
+CheckTiming::pushPinErrors(std::string_view msg,
                            PinSet &pins)
 {
   if (!pins.empty()) {
     CheckError *error = new CheckError;
-    std::string error_msg;
-    errorMsgSubst(msg, pins.size(), error_msg);
-    // Copy the error strings because the error deletes them when it
-    // is deleted.
-    error->push_back(stringCopy(error_msg.c_str()));
+    error->push_back(sta::formatRuntime(msg,
+                                        plurality(pins.size()),
+                                        pins.size(),
+                                        pluralSuffix(pins.size())));
     // Sort the error pins so the output is independent of the order
     // the the errors are discovered.
     PinSeq pins1 = sortByPathName(&pins, network_);
     for (const Pin *pin : pins1) {
-      const char *pin_name = stringCopy(sdc_network_->pathName(pin));
-      error->push_back(pin_name);
+      error->push_back(sdc_network_->pathName(pin));
     }
     errors_.push_back(error);
   }
@@ -382,62 +380,17 @@ CheckTiming::pushClkErrors(const char *msg,
 {
   if (!clks.empty()) {
     CheckError *error = new CheckError;
-    std::string error_msg;
-    errorMsgSubst(msg, clks.size(), error_msg);
-    // Copy the error strings because the error deletes them when it
-    // is deleted.
-    error->push_back(stringCopy(error_msg.c_str()));
+    error->push_back(sta::formatRuntime(msg,
+                                        plurality(clks.size()),
+                                        clks.size(),
+                                        pluralSuffix(clks.size())));
     // Sort the error clks so the output is independent of the order
     // the the errors are discovered.
     ClockSeq clks1 = sortByName(&clks);
     for (const Clock *clk : clks1) {
-      const char *clk_name = stringCopy(clk->name());
-      error->push_back(clk_name);
+      error->push_back(clk->name());
     }
     errors_.push_back(error);
-  }
-}
-
-// Copy msg making substitutions for singular/plurals.
-void
-CheckTiming::errorMsgSubst(const char *msg,
-                           int obj_count,
-                           std::string &error_msg)
-{
-  for (const char *s = msg; *s; s++) {
-    char ch = *s;
-    if (ch == '%') {
-      char flag = s[1];
-      if (flag == 'i') {
-        if (obj_count > 1)
-          error_msg += "are";
-        else
-          error_msg += "is";
-        s += 2;
-      }
-      else if (flag == 'a') {
-        if (obj_count == 1) {
-          error_msg += 'a';
-          s++;
-        }
-        else
-          // Skip space after %a.
-          s += 2;
-      }
-      else if (flag == 's') {
-        if (obj_count > 1)
-          error_msg += 's';
-        s++;
-      }
-      else if (flag == 'd') {
-        error_msg += std::to_string(obj_count);
-        s++;
-      }
-      else
-        criticalError(245, "unknown print flag");
-    }
-    else
-      error_msg += ch;
   }
 }
 

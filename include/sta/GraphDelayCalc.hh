@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -245,8 +245,8 @@ protected:
 
   bool annotateDelaySlew(Edge *edge,
                          const TimingArc *arc,
-                         ArcDelay &gate_delay,
-                         Slew &gate_slew,
+                         const ArcDelay &gate_delay,
+                         const Slew &gate_slew,
                          const Scene *scene,
                          const MinMax *min_max);
   bool annotateLoadDelays(Vertex *drvr_vertex,

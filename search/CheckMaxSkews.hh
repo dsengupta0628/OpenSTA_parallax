@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ public:
   Pin *clkPin(const StaState *sta) const;
   const Path *refPath() const { return ref_path_; }
   Pin *refPin(const StaState *sta) const;
-  Delay skew() const;
+  Delay skew(const StaState *sta) const;
   ArcDelay maxSkew(const StaState *sta) const;
   Slack slack(const StaState *sta) const;
   TimingArc *checkArc() const { return check_arc_; }

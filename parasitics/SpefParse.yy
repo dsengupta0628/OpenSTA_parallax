@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 
 #include "Report.hh"
 #include "StringUtil.hh"
-#include "StringSeq.hh"
+#include "StringUtil.hh"
 #include "parasitics/SpefReaderPvt.hh"
 #include "parasitics/SpefScanner.hh"
 
@@ -41,8 +41,7 @@ void
 sta::SpefParse::error(const location_type &loc,
                      const std::string &msg)
 {
-  reader->report()->fileError(164,reader->filename().c_str(),
-                              loc.begin.line,"%s",msg.c_str());
+  reader->report()->fileError(1670,reader->filename(), loc.begin. line, "{}", msg);
 }
 %}
 
@@ -62,7 +61,7 @@ sta::SpefParse::error(const location_type &loc,
   char *string;
   int integer;
   float number;
-  sta::StringSeq *string_seq;
+  sta::StringSeq *std_string_seq;
   sta::PortDirection *port_dir;
   sta::SpefRspfPi *pi;
   sta::SpefTriple *triple;
@@ -105,7 +104,7 @@ sta::SpefParse::error(const location_type &loc,
 
 %type <ch> hchar suffix_bus_delim prefix_bus_delim
 
-%type <string_seq> qstrings
+%type <std_string_seq> qstrings
 %type<port_dir> direction
 
 %type<triple> par_value total_cap
@@ -222,9 +221,12 @@ qstrings:
 	QSTRING
 	{ $$ = new sta::StringSeq;
 	  $$->push_back($1);
+	  sta::stringDelete($1);
 	}
 |	qstrings QSTRING
-	{ $$->push_back($2); }
+	{ $$->push_back($2);
+	  sta::stringDelete($2);
+	}
 ;
 
 hierarchy_div_def:
@@ -828,7 +830,7 @@ pos_integer:
 	INTEGER
 	{ int value = $1;
 	  if (value < 0)
-	    reader->warn(1525, "%d is not positive.", value);
+	    reader->warn(1525, "{} is not positive.", value);
 	  $$ = value;
 	}
 ;
@@ -837,13 +839,13 @@ pos_number:
 	INTEGER
 	{ float value = static_cast<float>($1);
 	  if (value < 0)
-	    reader->warn(1526, "%.4f is not positive.", value);
+	    reader->warn(1526, "{:.4f} is not positive.", value);
 	  $$ = value;
 	}
 |	FLOAT
 	{ float value = static_cast<float>($1);
 	  if (value < 0)
-	    reader->warn(1527, "%.4f is not positive.", value);
+	    reader->warn(1527, "{:.4f} is not positive.", value);
 	  $$ = value;
 	}
 ;

@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,13 +24,14 @@
 
 #pragma once
 
+#include <cstdarg>
 #include <functional>
 #include <memory>
 #include <array>
+#include <string_view>
 #include <vector>
 #include <unordered_map>
 
-#include "StringSeq.hh"
 #include "StringUtil.hh"
 #include "MinMax.hh"
 #include "NetworkClass.hh"
@@ -44,6 +45,7 @@
 #include "LibertyParser.hh"
 #include "LibertyReader.hh"
 #include "LibertyBuilder.hh"
+#include "Report.hh"
 
 namespace sta {
 
@@ -101,7 +103,7 @@ public:
 
   LibertyPort *findPort(LibertyCell *cell,
                         const char *port_name);
-  StdStringSeq findAttributStrings(const LibertyGroup *group,
+  StringSeq findAttributStrings(const LibertyGroup *group,
                                    const char *name_attr);
 
 protected:
@@ -132,6 +134,7 @@ protected:
                           const char *group_name,
                           TableTemplateType type);
   void readThresholds(const LibertyGroup *library_group);
+  void checkThresholds(const LibertyGroup *library_group) const;
   TableAxisPtr makeTableTemplateAxis(const LibertyGroup *template_group,
                                      int axis_index);
   void readVoltateMaps(const LibertyGroup *library_group);
@@ -231,25 +234,21 @@ protected:
                       const LibertyPortSeq &ports,
                       const LibertyGroup *port_group);
   bool isGateTimingType(TimingType timing_type);
-  TableModel *readGateTableModel(const LibertyGroup *timing_group,
-                                 const char *table_group_name,
-                                 const RiseFall *rf,
-                                 TableTemplateType template_type,
-                                 float scale,
-                                 ScaleFactorType scale_factor_type);
+  TableModel *readTableModel(const LibertyGroup *timing_group,
+                             const std::string &table_group_name,
+                             const RiseFall *rf,
+                             TableTemplateType template_type,
+                             float scale,
+                             ScaleFactorType scale_factor_type,
+                             const std::function<bool(TableModel *model)> check_axes);
   TableModelsEarlyLate
   readEarlyLateTableModels(const LibertyGroup *timing_group,
                            const char *table_group_name,
                            const RiseFall *rf,
                            TableTemplateType template_type,
                            float scale,
-                           ScaleFactorType scale_factor_type);
-  TableModel *readCheckTableModel(const LibertyGroup *timing_group,
-                                  const char *table_group_name,
-                                  const RiseFall *rf,
-                                  TableTemplateType template_type,
-                                  float scale,
-                                  ScaleFactorType scale_factor_type);
+                           ScaleFactorType scale_factor_type,
+                           const std::function<bool(TableModel *model)> check_axes);
   ReceiverModelPtr readReceiverCapacitance(const LibertyGroup *timing_group,
                                            const RiseFall *rf);
   void readReceiverCapacitance(const LibertyGroup *timing_group,
@@ -267,7 +266,9 @@ protected:
                              const RiseFall *rf,
                              TableTemplateType template_type,
                              float scale,
-                             ScaleFactorType scale_factor_type);
+                             ScaleFactorType scale_factor_type,
+                             const std::function<bool(TableModel *model)> &check_axes =
+                               [](TableModel *) { return true; });
   TablePtr readTableModel(const LibertyGroup *table_group,
                           const TableTemplate *tbl_template,
                           float scale);
@@ -280,6 +281,14 @@ protected:
   void makeTableModels(LibertyCell *cell,
                        const LibertyGroup *timing_group,
                        TimingArcAttrsPtr timing_attrs);
+  void readLvfModels(const LibertyGroup *timing_group,
+                     const std::string &sigma_group_name,
+                     const std::string &std_dev_group_name,
+                     const std::string &mean_shift_group_name,
+                     const std::string &skewness_group_name,
+                     const RiseFall *rf,
+                     TableModels *table_models,
+                     const std::function<bool(TableModel *model)> check_axes);
 
   TableAxisPtr makeTableAxis(const LibertyGroup *table_group,
                              const char *index_attr_name,
@@ -401,9 +410,9 @@ protected:
 
   float defaultCap(LibertyPort *port);
   void visitPorts(std::function<void (LibertyPort *port)> func);
-  StateInputValues parseStateInputValues(StdStringSeq &inputs,
+  StateInputValues parseStateInputValues(StringSeq &inputs,
                                          const LibertySimpleAttr *attr);
-  StateInternalValues parseStateInternalValues(StdStringSeq &states,
+  StateInternalValues parseStateInternalValues(StringSeq &states,
                                                const LibertySimpleAttr *attr);
 
   void getAttrInt(const LibertySimpleAttr *attr,
@@ -444,38 +453,65 @@ protected:
                       const char *attr_name,
                       const LibertyCell *cell,
                       int line);
-  void libWarn(int id,
-               const LibertyGroup *obj,
-               const char *fmt,
-               ...)
-    __attribute__((format (printf, 4, 5)));
-  void libWarn(int id,
-               const LibertySimpleAttr *obj,
-               const char *fmt,
-               ...)
-    __attribute__((format (printf, 4, 5)));
-  void libWarn(int id,
-               const LibertyComplexAttr *obj,
-               const char *fmt,
-               ...)
-    __attribute__((format (printf, 4, 5)));
-  void libWarn(int id,
+  template <typename... Args>
+  void warn(int id,
+               const LibertyGroup *group,
+               std::string_view fmt,
+               Args &&...args) const
+  {
+    report_->fileWarn(id, filename_, group->line(), fmt, std::forward<Args>(args)...);
+  }
+  template <typename... Args>
+  void warn(int id,
+               const LibertySimpleAttr *attr,
+               std::string_view fmt,
+               Args &&...args) const
+  {
+    report_->fileWarn(id, filename_, attr->line(), fmt, std::forward<Args>(args)...);
+  }
+  template <typename... Args>
+  void warn(int id,
+               const LibertyComplexAttr *attr,
+               std::string_view fmt,
+               Args &&...args) const
+  {
+    report_->fileWarn(id, filename_, attr->line(), fmt, std::forward<Args>(args)...);
+  }
+  template <typename... Args>
+  void warn(int id,
                int line,
-               const char *fmt,
-               ...)
-    __attribute__((format (printf, 4, 5)));
-  void libError(int id,
-                const LibertyGroup *obj,
-                const char *fmt, ...)
-    __attribute__((format (printf, 4, 5)));
-  void libError(int id,
-                const LibertySimpleAttr *obj,
-                const char *fmt, ...)
-    __attribute__((format (printf, 4, 5)));
-  void libError(int id,
-                const LibertyComplexAttr *obj,
-                const char *fmt, ...)
-    __attribute__((format (printf, 4, 5)));
+               std::string_view fmt,
+               Args &&...args) const
+  {
+    report_->fileWarn(id, filename_, line, fmt, std::forward<Args>(args)...);
+  }
+  template <typename... Args>
+  void error(int id,
+                const LibertyGroup *group,
+                std::string_view fmt,
+                Args &&...args) const
+  {
+    report_->fileError(id, filename_, group->line(), fmt,
+                      std::forward<Args>(args)...);
+  }
+  template <typename... Args>
+  void error(int id,
+                const LibertySimpleAttr *attr,
+                std::string_view fmt,
+                Args &&...args) const
+  {
+    report_->fileError(id, filename_, attr->line(), fmt,
+                      std::forward<Args>(args)...);
+  }
+  template <typename... Args>
+  void error(int id,
+                const LibertyComplexAttr *attr,
+                std::string_view fmt,
+                Args &&...args) const
+  {
+    report_->fileError(id, filename_, attr->line(), fmt,
+                      std::forward<Args>(args)...);
+  }
 
   const char *filename_;
   bool infer_latches_;
@@ -485,7 +521,6 @@ protected:
   LibertyBuilder builder_;
   LibertyVariableMap var_map_;
   LibertyLibrary *library_;
-  bool first_cell_;
   LibraryGroupVisitorMap group_begin_map_;
   LibraryGroupVisitorMap group_end_map_;
 
@@ -516,8 +551,8 @@ public:
                       LibertyReader *visitor,
                       int line);
   ~PortNameBitIterator();
-  virtual bool hasNext();
-  virtual LibertyPort *next();
+  bool hasNext() override;
+  LibertyPort *next() override;
   unsigned size() const { return size_; }
 
 protected:

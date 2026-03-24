@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -42,6 +42,15 @@ RiseFall::RiseFall(const char *name,
   short_name_(short_name),
   sdf_triple_index_(sdf_triple_index)
 {
+}
+
+const std::string &
+RiseFall::to_string(bool use_short) const
+{
+  if (use_short)
+    return short_name_;
+  else
+    return name_;
 }
 
 const RiseFall *
@@ -132,6 +141,15 @@ RiseFallBoth::RiseFallBoth(const char *name,
   range_(range),
   range_index_(range_index)
 {
+}
+
+const std::string &
+RiseFallBoth::to_string(bool use_short) const
+{
+  if (use_short)
+    return short_name_;
+  else
+    return name_;
 }
 
 const RiseFallBoth *

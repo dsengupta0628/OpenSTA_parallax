@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -67,8 +67,8 @@ VisitPathEnds::visitPathEnds(Vertex *vertex,
   // Ignore slack on bidirect driver vertex.  The load vertex gets the slack.
   if (!vertex->isBidirectDriver()) {
     const Pin *pin = vertex->pin();
-    debugPrint(debug_, "search", 2, "find end slack %s",
-               vertex->to_string(this).c_str());
+    debugPrint(debug_, "search", 2, "find end slack {}",
+               vertex->to_string(this));
     visitor->vertexBegin(vertex);
     bool is_constrained = false;
     visitClkedPathEnds(pin, vertex, scenes, min_max, filtered, visitor,

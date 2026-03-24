@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 
-#include "StringSeq.hh"
+#include "StringUtil.hh"
 #include "SearchClass.hh"
 #include "PathEnd.hh"
 #include "CheckMinPulseWidths.hh"
@@ -49,19 +49,18 @@ public:
   virtual ~ReportPath();
   ReportPathFormat pathFormat() const { return format_; }
   void setPathFormat(ReportPathFormat format);
-  void setReportFieldOrder(StringSeq *field_names);
+  void setReportFieldOrder(const StringSeq &field_names);
   void setReportFields(bool report_input_pin,
                        bool report_hier_pins,
                        bool report_net,
                        bool report_cap,
                        bool report_slew,
                        bool report_fanout,
+                       bool report_variation,
                        bool report_src_attr);
   int digits() const { return digits_; }
   void setDigits(int digits);
   void setNoSplit(bool no_split);
-  bool reportSigmas() const { return report_sigmas_; }
-  void setReportSigmas(bool report);
   ReportField *findField(const char *name) const;
 
   // Header above reportPathEnd results.
@@ -267,8 +266,8 @@ protected:
                            float clk_time,
                            const EarlyLate *early_late) const;
   void reportPathLine(const Path *path,
-                      Delay incr,
-                      Arrival time,
+                      const Delay &incr,
+                      const Arrival &time,
                       const char *line_case) const;
   void reportCommonClkPessimism(const PathEnd *end,
                                 Arrival &clk_arrival) const ;
@@ -331,6 +330,7 @@ protected:
                    bool report_clk_path,
                    Arrival prev_time,
                    float time_offset) const;
+  void reportVariation(const Path *path) const;
   void reportHierPinsThru(const Path *path) const;
   void reportInputExternalDelay(const Path *path,
                                 float time_offset) const;
@@ -345,38 +345,39 @@ protected:
                   const EarlyLate *early_late,
                   const RiseFall *rf) const;
   void reportLine(const char *what,
-                  Delay incr,
-                  Delay total,
+                  const Delay &incr,
+                  const Delay &total,
                   const EarlyLate *early_late) const;
   void reportLine(const char *what,
-                  Delay incr,
-                  Delay total,
+                  const Delay &incr,
+                  const Delay &total,
                   const EarlyLate *early_late,
                   const RiseFall *rf) const;
   void reportLine(const char *what,
-                  Slew slew,
-                  Delay incr,
-                  Delay total,
+                  const Slew &slew,
+                  const Delay &incr,
+                  const Delay &total,
                   const EarlyLate *early_late) const;
   void reportLine(const char *what,
                   float cap,
-                  Slew slew,
+                  const Slew &slew,
                   float fanout,
-                  Delay incr,
-                  Delay total,
+                  const Delay &incr,
+                  float variation,
+                  const Delay &total,
                   bool total_with_minus,
                   const EarlyLate *early_late,
                   const RiseFall *rf,
                   std::string src_attr,
                   const char *line_case) const;
   void reportLineTotal(const char *what,
-                       Delay incr,
+                       const Delay &incr,
                        const EarlyLate *early_late) const;
   void reportLineTotalMinus(const char *what,
-                            Delay decr,
+                            const Delay &decr,
                             const EarlyLate *early_late) const;
   void reportLineTotal1(const char *what,
-                        Delay incr,
+                        const Delay &incr,
                         bool incr_with_minus,
                         const EarlyLate *early_late) const;
   void reportDashLineTotal() const;
@@ -391,17 +392,17 @@ protected:
                        std::string &result) const;
   void reportSpaceFieldTime(float value,
                             std::string &result) const;
-  void reportSpaceFieldDelay(Delay value,
+  void reportSpaceFieldDelay(const Delay &value,
                              const EarlyLate *early_late,
                              std::string &result) const;
-  void reportFieldDelayMinus(Delay value,
+  void reportFieldDelayMinus(const Delay &value,
                              const EarlyLate *early_late,
                              const ReportField *field,
                              std::string &result) const;
-  void reportTotalDelay(Delay value,
+  void reportTotalDelay(const Delay &value,
                         const EarlyLate *early_late,
                         std::string &result) const;
-  void reportFieldDelay(Delay value,
+  void reportFieldDelay(const Delay &value,
                         const EarlyLate *early_late,
                         const ReportField *field,
                         std::string &result) const;
@@ -465,8 +466,8 @@ protected:
                              Path &ref_path) const;
   const char *asRisingFalling(const RiseFall *rf) const;
   const char *asRiseFall(const RiseFall *rf) const;
-  Delay delayIncr(Delay time,
-                  Delay prev,
+  Delay delayIncr(const Delay &time,
+                  const Delay &prev,
                   const MinMax *min_max) const;
 
   // Path options.
@@ -477,7 +478,6 @@ protected:
   bool report_net_;
   bool no_split_;
   int digits_;
-  bool report_sigmas_;
 
   int start_end_pt_width_;
 
@@ -487,14 +487,16 @@ protected:
   ReportField *field_capacitance_;
   ReportField *field_slew_;
   ReportField *field_fanout_;
+  ReportField *field_variation_;
   ReportField *field_src_attr_;
   ReportField *field_edge_;
   ReportField *field_case_;
 
-  const char *plus_zero_;
-  const char *minus_zero_;
+  std::string plus_zero_;
+  std::string minus_zero_;
 
-  static const float field_blank_;
+  int field_width_extra_;
+  static constexpr float field_blank_ = -1;
   static const float field_skip_;
 };
 

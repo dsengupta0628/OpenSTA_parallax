@@ -1,5 +1,5 @@
 // opensta, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -100,14 +100,14 @@ public:
                           bool unconstrained,
                           const SceneSeq &scenes,
                           const MinMaxAll *min_max,
-                          size_t group_path_count,
-                          size_t endpoint_path_count,
+                          int group_path_count,
+                          int endpoint_path_count,
                           bool unique_pins,
                           bool unique_edges,
                           float slack_min,
                           float slack_max,
                           bool sort_by_slack,
-                          StdStringSeq &group_names,
+                          StringSeq &group_names,
                           bool setup,
                           bool hold,
                           bool recovery,

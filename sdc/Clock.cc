@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 
 #include "ContainerHelpers.hh"
 #include "Error.hh"
+#include "Format.hh"
 #include "StringUtil.hh"
 #include "MinMax.hh"
 #include "Transition.hh"
@@ -531,7 +532,7 @@ ClockEdge::ClockEdge(Clock *clock,
                      const RiseFall *rf) :
   clock_(clock),
   rf_(rf),
-  name_(stringPrint("%s %s", clock_->name(), rf_->to_string().c_str())),
+  name_(sta::format("{} {}", clock_->name(), rf_->shortName())),
   time_(0.0),
   index_(clock_->index() * RiseFall::index_count + rf_->index())
 {
@@ -539,7 +540,6 @@ ClockEdge::ClockEdge(Clock *clock,
 
 ClockEdge::~ClockEdge()
 {
-  stringDelete(name_);
 }
 
 void

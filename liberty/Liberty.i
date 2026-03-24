@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -367,16 +367,13 @@ std::string to_string() { return self->to_string(); }
 const TimingRole *role() { return self->role(); }
 const char *sdf_cond() { return self->sdfCond().c_str(); }
 
-const char *
+std::string
 full_name()
 {
   const char *from = self->from()->name();
   const char *to = self->to()->name();
   const char *cell_name = self->libertyCell()->name();
-  return stringPrintTmp("%s %s -> %s",
-                        cell_name,
-                        from,
-                        to);
+  return sta::format("{} {} -> {}", cell_name, from, to);
 }
 
 const std::string

@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
+#include <optional>
 
 namespace sta {
 
@@ -60,7 +61,6 @@ public:
     comp_(comp),
     min_heap_comp_(comp)
   {
-    heap_.reserve(max_size);
   }
 
   // Copy constructor
@@ -107,20 +107,26 @@ public:
   setMaxSize(size_t max_size)
   {
     max_size_ = max_size;
-    heap_.reserve(max_size);
+  }
+
+  void
+  reserve(size_t size)
+  {
+    heap_.reserve(size);
   }
 
   // Insert an element into the heap.
   // If the heap is not full, the element is added.
   // If the heap is full and the new element is better than the worst element,
   // the worst element is replaced. Otherwise, the element is ignored.
-  // Returns true if the element was inserted, false if it was ignored.
-  bool
+  // Returns (inserted, displaced): inserted is true if the element was inserted,
+  // displaced is set when an element was pushed out (caller must handle ownership).
+  std::pair<bool, std::optional<T>>
   insert(const T& value) {
     if (heap_.size() < max_size_) {
       heap_.push_back(value);
       std::push_heap(heap_.begin(), heap_.end(), min_heap_comp_);
-      return true;
+      return {true, std::nullopt};
     }
     else if (!heap_.empty()) {
       // When keeping N worst (smallest) values: if new value is smaller than worst,
@@ -130,23 +136,25 @@ public:
       if (comp_(value, heap_.front())) {
         // New value is smaller than worst - find and replace the largest element
         auto max_it = std::max_element(heap_.begin(), heap_.end(), comp_);
+        T displaced = std::move(*max_it);
         *max_it = value;
         // Rebuild heap since we modified an internal element
         std::make_heap(heap_.begin(), heap_.end(), min_heap_comp_);
-        return true;
+        return {true, std::move(displaced)};
       }
       // Otherwise, new value is >= worst, so we already have worse values - reject it
     }
-    return false;
+    return {false, std::nullopt};
   }
 
   // Insert an element using move semantics
-  bool insert(T&& value)
+  std::pair<bool, std::optional<T>>
+  insert(T&& value)
   {
     if (heap_.size() < max_size_) {
       heap_.push_back(std::move(value));
       std::push_heap(heap_.begin(), heap_.end(), min_heap_comp_);
-      return true;
+      return {true, std::nullopt};
     }
     else if (!heap_.empty()) {
       // When keeping N worst (smallest) values: if new value is smaller than worst,
@@ -156,14 +164,15 @@ public:
       if (comp_(value, heap_.front())) {
         // New value is smaller than worst - find and replace the largest element
         auto max_it = std::max_element(heap_.begin(), heap_.end(), comp_);
+        T displaced = std::move(*max_it);
         *max_it = std::move(value);
         // Rebuild heap since we modified an internal element
         std::make_heap(heap_.begin(), heap_.end(), min_heap_comp_);
-        return true;
+        return {true, std::move(displaced)};
       }
       // Otherwise, new value is >= worst, so we already have worse values - reject it
     }
-    return false;
+    return {false, std::nullopt};
   }
 
   // Extract all elements sorted from best to worst.
@@ -172,8 +181,6 @@ public:
   {
     // Convert heap to sorted vector (best to worst)
     std::sort_heap(heap_.begin(), heap_.end(), min_heap_comp_);
-    // Reverse to get best first (according to user's comparison)
-    std::reverse(heap_.begin(), heap_.end());
     std::vector<T> result = std::move(heap_);
     heap_.clear();
     return result;
@@ -181,11 +188,10 @@ public:
 
   // Extract all elements sorted from best to worst (const version).
   // Creates a copy since we can't modify the heap.
-  std::vector<T> extract() const
+  std::vector<T> contents() const
   {
     std::vector<T> temp_heap = heap_;
     std::sort_heap(temp_heap.begin(), temp_heap.end(), min_heap_comp_);
-    std::reverse(temp_heap.begin(), temp_heap.end());
     return temp_heap;
   }
 
@@ -245,7 +251,7 @@ private:
     Compare comp_;
     explicit MinHeapCompare(const Compare& c) : comp_(c) {}
     bool operator()(const T& a, const T& b) const {
-      return comp_(b, a);  // Inverted: worst is at root
+      return comp_(a, b);  // comp = less puts largest at root (worst)
     }
   };
 

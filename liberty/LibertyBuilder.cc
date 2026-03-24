@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -102,12 +102,8 @@ LibertyBuilder::makeBusPortBit(ConcreteLibrary *library,
                                const char *bus_name,
                                int bit_index)
 {
-  std::string bit_name;
-  stringPrint(bit_name, "%s%c%d%c",
-              bus_name,
-              library->busBrktLeft(),
-              bit_index,
-              library->busBrktRight());
+  std::string bit_name = std::string(bus_name) + library->busBrktLeft()
+    + std::to_string(bit_index) + library->busBrktRight();
   LibertyPort *port = makePort(cell, bit_name.c_str(), bit_index);
   bus_port->addPortBit(port);
   cell->addPortBit(port);

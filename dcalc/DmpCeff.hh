@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -69,15 +69,15 @@ protected:
                              const LibertyLibrary *drvr_library,
                              const Parasitic *parasitic,
                              // Return values.
-                             ArcDelay &wire_delay,
-                             Slew &load_slew) = 0;
+                             double &wire_delay,
+                             double &load_slew) = 0;
   void gateDelaySlew(// Return values.
                      double &delay,
                      double &slew);
   void loadDelaySlewElmore(const Pin *load_pin,
                            double elmore,
-                           ArcDelay &delay,
-                           Slew &slew);
+                           double &delay,
+                           double &slew);
   // Select the appropriate special case Dartu/Menezes/Pileggi algorithm.
   void setCeffAlgorithm(const LibertyLibrary *library,
                         const LibertyCell *cell,

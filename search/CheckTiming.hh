@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 #include <vector>
 
-#include "StringSeq.hh"
+#include "StringUtil.hh"
 #include "NetworkClass.hh"
 #include "GraphClass.hh"
 #include "SdcClass.hh"
@@ -70,13 +70,10 @@ protected:
   bool hasClkedCheck(Vertex *vertex);
   bool hasMaxDelay(Pin *pin);
   void checkGeneratedClocks();
-  void pushPinErrors(const char *msg,
+  void pushPinErrors(std::string_view msg,
                      PinSet &pins);
   void pushClkErrors(const char *msg,
                      ClockSet &clks);
-  void errorMsgSubst(const char *msg,
-                     int count,
-                     std::string &error_msg);
 
   CheckErrorSeq errors_;
   const Mode *mode_;

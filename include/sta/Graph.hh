@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -58,13 +58,7 @@ static constexpr ObjectIdx vertex_idx_null = object_idx_null;
 class Graph : public StaState
 {
 public:
-  // slew_rf_count is
-  //  0 no slews
-  //  1 one slew for rise/fall
-  //  2 rise/fall slews
-  // ap_count is the dcalc analysis point count.
   Graph(StaState *sta,
-        int slew_rf_count,
         DcalcAPIndex ap_count);
   void makeGraph();
   ~Graph();
@@ -97,9 +91,11 @@ public:
   // Reported slew are the same as those in the liberty tables.
   //  reported_slews = measured_slews / slew_derate_from_library
   // Measured slews are between slew_lower_threshold and slew_upper_threshold.
-  const Slew &slew(const Vertex *vertex,
-                   const RiseFall *rf,
-                   DcalcAPIndex ap_index);
+  Slew slew(const Vertex *vertex,
+            const RiseFall *rf,
+            DcalcAPIndex ap_index);
+  Slew slew(const Vertex *vertex,
+            size_t index);
   void setSlew(Vertex *vertex,
                const RiseFall *rf,
                DcalcAPIndex ap_index,
@@ -134,11 +130,11 @@ public:
   void setArcDelay(Edge *edge,
                    const TimingArc *arc,
                    DcalcAPIndex ap_index,
-                   ArcDelay delay);
+                   const ArcDelay &delay);
   // Alias for arcDelays using library wire arcs.
-  const ArcDelay &wireArcDelay(const Edge *edge,
-                               const RiseFall *rf,
-                               DcalcAPIndex ap_index);
+  ArcDelay wireArcDelay(const Edge *edge,
+                        const RiseFall *rf,
+                        DcalcAPIndex ap_index);
   void setWireArcDelay(Edge *edge,
                        const RiseFall *rf,
                        DcalcAPIndex ap_index,
@@ -222,7 +218,6 @@ protected:
   //  driver/source (top level input, instance pin output) vertex
   //  in pin_bidirect_drvr_vertex_map
   PinVertexMap pin_bidirect_drvr_vertex_map_;
-  int slew_rf_count_;
   DcalcAPIndex ap_count_;
   // Sdf period check annotations.
   PeriodCheckAnnotations *period_check_annotations_;
@@ -258,8 +253,6 @@ public:
   [[nodiscard]] bool isRoot() const{ return level_ == 0; }
   [[nodiscard]] bool hasFanin() const;
   [[nodiscard]] bool hasFanout() const;
-  Slew *slews() { return slews_; }
-  const Slew *slews() const { return slews_; }
   Path *paths() const { return paths_; }
   Path *makePaths(uint32_t count);
   void setPaths(Path *paths);
@@ -298,14 +291,18 @@ protected:
             bool is_bidirect_drvr,
             bool is_reg_clk);
   void clear();
-  void setSlews(Slew *slews);
+  Slew *slews() { return std::bit_cast<Slew*>(slews_); }
+  const Slew *slews() const { return std::bit_cast<const Slew*>(slews_); }
+  float *slewsFloat() { return slews_; }
+  const float *slewsFloat() const { return slews_; }
+  void setSlews(float *slews);
 
   Pin *pin_;
   EdgeId in_edges_;             // Edges to this vertex.
   EdgeId out_edges_;            // Edges from this vertex.
 
   // Delay calc
-  Slew *slews_;
+  float *slews_;
   // Search
   Path *paths_;
 
@@ -356,8 +353,9 @@ public:
   TimingSense sense() const;
   TimingArcSet *timingArcSet() const { return arc_set_; }
   void setTimingArcSet(TimingArcSet *set);
-  ArcDelay *arcDelays() const { return arc_delays_; }
-  void setArcDelays(ArcDelay *arc_delays);
+  float *arcDelays() { return arc_delays_; }
+  const float *arcDelays() const { return arc_delays_; }
+  void setArcDelays(float *delays);
   bool delay_Annotation_Is_Incremental() const {return delay_annotation_is_incremental_;};
   void setDelayAnnotationIsIncremental(bool is_incr);
   // Edge is disabled to break combinational loops.
@@ -398,7 +396,7 @@ protected:
   EdgeId vertex_in_link_;               // Vertex in edges list.
   EdgeId vertex_out_next_;              // Vertex out edges doubly linked list.
   EdgeId vertex_out_prev_;
-  ArcDelay *arc_delays_;
+  float *arc_delays_;
   union {
     uintptr_t bits_;
     std::vector<bool> *seq_;
@@ -427,8 +425,8 @@ class VertexIterator : public Iterator<Vertex*>
 {
 public:
   VertexIterator(Graph *graph);
-  virtual bool hasNext() { return vertex_ || bidir_vertex_; }
-  virtual Vertex *next();
+  bool hasNext() override { return vertex_ || bidir_vertex_; }
+  Vertex *next() override;
 
 private:
   bool findNextPin();
@@ -450,8 +448,8 @@ public:
                        const Graph *graph);
   VertexInEdgeIterator(VertexId vertex_id,
                        const Graph *graph);
-  bool hasNext() { return (next_ != nullptr); }
-  Edge *next();
+  bool hasNext() override { return (next_ != nullptr); }
+  Edge *next() override;
 
 private:
   Edge *next_;
@@ -463,8 +461,8 @@ class VertexOutEdgeIterator : public VertexEdgeIterator
 public:
   VertexOutEdgeIterator(Vertex *vertex,
                         const Graph *graph);
-  bool hasNext() { return (next_ != nullptr); }
-  Edge *next();
+  bool hasNext() override { return (next_ != nullptr); }
+  Edge *next() override;
 
 private:
   Edge *next_;
@@ -478,8 +476,8 @@ public:
   EdgesThruHierPinIterator(const Pin *hpin,
                            Network *network,
                            Graph *graph);
-  virtual bool hasNext();
-  virtual Edge *next();
+  bool hasNext() override;
+  Edge *next() override;
 
 private:
   EdgeSet edges_;

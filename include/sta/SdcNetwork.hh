@@ -1,5 +1,5 @@
 // OpenSTA, Static Timing Analyzer
-// Copyright (c) 2025, Parallax Software, Inc.
+// Copyright (c) 2026, Parallax Software, Inc.
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -274,7 +274,7 @@ protected:
                               const PatternMatch *pattern,
                               InstanceSeq &matches) const;
 
-  const char *staToSdc(const char *sta_name) const;
+  const char *staToSdc(std::string_view sta_name) const;
 };
 
 // Encapsulate a network to map names to/from the sdc namespace.
