@@ -23,7 +23,8 @@
 // This notice may not be removed or altered from any source distribution.
 
 %module sdc
-%import <std_string.i>
+
+%include "std_string.i" 
 
 %{
 #include <vector>
@@ -33,6 +34,7 @@
 #include "Clock.hh"
 #include "PortDelay.hh"
 #include "Property.hh"
+#include "FilterObjects.hh"
 #include "Sta.hh"
 
 using namespace sta;
@@ -91,12 +93,12 @@ private:
 %inline %{
 
 void
-write_sdc_cmd(const char *filename,
-              bool leaf,
-              bool compatible,
-              int digits,
-              bool gzip,
-              bool no_timestamp)
+write_sdc_cmd(std::string filename,
+             bool leaf,
+             bool compatible,
+             int digits,
+             bool gzip,
+             bool no_timestamp)
 {
   Sta *sta = Sta::sta();
   const Sdc *sdc = sta->cmdSdc();
@@ -104,16 +106,16 @@ write_sdc_cmd(const char *filename,
 }
 
 void
-set_analysis_type_cmd(const char *analysis_type)
+set_analysis_type_cmd(std::string analysis_type)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
   AnalysisType type;
-  if (stringEq(analysis_type, "single"))
+  if (analysis_type == "single")
     type = AnalysisType::single;
-  else if (stringEq(analysis_type, "bc_wc"))
+  else if (analysis_type == "bc_wc")
     type = AnalysisType::bc_wc;
-  else if (stringEq(analysis_type, "on_chip_variation"))
+  else if (analysis_type == "on_chip_variation")
     type = AnalysisType::ocv;
   else {
     sta->report()->warn(2121, "unknown analysis type");
@@ -249,7 +251,7 @@ set_net_wire_cap(const Net *net,
 }
 
 void
-set_wire_load_mode_cmd(const char *mode_name)
+set_wire_load_mode_cmd(std::string mode_name)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
@@ -289,20 +291,21 @@ set_net_resistance(Net *net,
 }
 
 void
-make_clock(const char *name,
+make_clock(std::string name,
            PinSet *pins,
            bool add_to_pins,
            float period,
            FloatSeq *waveform,
-           char *comment)
+           std::string comment)
 {
   Sta *sta = Sta::sta();
   const Mode *mode = sta->cmdMode();
-  sta->makeClock(name, pins, add_to_pins, period, waveform, comment, mode);
+  sta->makeClock(name.c_str(), pins, add_to_pins, period, waveform,
+                 std::move(comment), mode);
 }
 
 void
-make_generated_clock(const char *name,
+make_generated_clock(std::string name,
                      PinSet *pins,
                      bool add_to_pins,
                      Pin *src_pin,
@@ -314,15 +317,15 @@ make_generated_clock(const char *name,
                      bool combinational,
                      IntSeq *edges,
                      FloatSeq *edge_shifts,
-                     char *comment)
+                     std::string comment)
 {
   Sta *sta = Sta::sta();
   const Mode *mode = sta->cmdMode();
-  sta->makeGeneratedClock(name, pins, add_to_pins,
+  sta->makeGeneratedClock(name.c_str(), pins, add_to_pins,
                           src_pin, master_clk,
                           divide_by, multiply_by, duty_cycle, invert,
                           combinational, edges, edge_shifts,
-                          comment, mode);
+                          std::move(comment), mode);
 }
 
 void
@@ -796,11 +799,11 @@ make_false_path(ExceptionFrom *from,
                 ExceptionThruSeq *thrus,
                 ExceptionTo *to,
                 const MinMaxAll *min_max,
-                const char *comment)
+                std::string comment)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
-  sta->makeFalsePath(from, thrus, to, min_max, comment, sdc);
+  sta->makeFalsePath(from, thrus, to, min_max, std::move(comment), sdc);
 }
 
 void
@@ -810,12 +813,12 @@ make_multicycle_path(ExceptionFrom *from,
                      const MinMaxAll *min_max,
                      bool use_end_clk,
                      int path_multiplier,
-                     const char *comment)
+                     std::string comment)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
   sta->makeMulticyclePath(from, thrus, to, min_max, use_end_clk,
-                          path_multiplier, comment, sdc);
+                          path_multiplier, std::move(comment), sdc);
 }
 
 void
@@ -826,13 +829,13 @@ make_path_delay(ExceptionFrom *from,
                 bool ignore_clk_latency,
                 bool break_path,
                 float delay,
-                const char *comment)
+                std::string comment)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
   sta->makePathDelay(from, thrus, to, min_max, 
                      ignore_clk_latency, break_path,
-                     delay, comment, sdc);
+                     delay, std::move(comment), sdc);
 }
 
 void
@@ -851,20 +854,20 @@ reset_path_cmd(ExceptionFrom *
 }
 
 void
-make_group_path(const char *name,
+make_group_path(std::string name,
                 bool is_default,
                 ExceptionFrom *from,
                 ExceptionThruSeq *thrus,
                 ExceptionTo *to,
-                const char *comment)
+                std::string comment)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
-  sta->makeGroupPath(name, is_default, from, thrus, to, comment, sdc);
+  sta->makeGroupPath(name, is_default, from, thrus, to, std::move(comment), sdc);
 }
 
 bool
-is_path_group_name(const char *name)
+is_path_group_name(std::string name)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
@@ -879,8 +882,7 @@ make_exception_from(PinSet *from_pins,
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
-  return sta->makeExceptionFrom(from_pins, from_clks, from_insts,
-                                from_rf, sdc);
+  return sta->makeExceptionFrom(from_pins, from_clks, from_insts, from_rf, sdc);
 }
 
 void
@@ -892,12 +894,12 @@ delete_exception_from(ExceptionFrom *from)
 
 void
 check_exception_from_pins(ExceptionFrom *from,
-                          const char *file,
+                          const char *filename,
                           int line)
 {
   Sta *sta = Sta::sta();
   const Sdc *sdc = sta->cmdSdc();
-  sta->checkExceptionFromPins(from, file, line, sdc);
+  sta->checkExceptionFromPins(from, filename, line, sdc);
 }
 
 ExceptionThru *
@@ -950,18 +952,18 @@ check_exception_to_pins(ExceptionTo *to,
 ////////////////////////////////////////////////////////////////
 
 ClockGroups *
-make_clock_groups(const char *name,
+make_clock_groups(std::string name,
                   bool logically_exclusive,
                   bool physically_exclusive,
                   bool asynchronous,
                   bool allow_paths,
-                  const char *comment)
+                  std::string comment)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
   return sta->makeClockGroups(name, logically_exclusive,
                               physically_exclusive, asynchronous,
-                              allow_paths, comment, sdc);
+                              allow_paths, std::move(comment), sdc);
 }
 
 void
@@ -982,7 +984,7 @@ unset_clock_groups_logically_exclusive()
 }
 
 void
-unset_clock_groups_logically_exclusive(const char *name)
+unset_clock_groups_logically_exclusive(std::string name)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
@@ -998,7 +1000,7 @@ unset_clock_groups_physically_exclusive()
 }
 
 void
-unset_clock_groups_physically_exclusive(const char *name)
+unset_clock_groups_physically_exclusive(std::string name)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
@@ -1014,7 +1016,7 @@ unset_clock_groups_asynchronous()
 }
 
 void
-unset_clock_groups_asynchronous(const char *name)
+unset_clock_groups_asynchronous(std::string name)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
@@ -1332,7 +1334,7 @@ unset_timing_derate_cmd()
 }
 
 Clock *
-find_clock(const char *name)
+find_clock(std::string name)
 {
   Sta *sta = Sta::sta();
   Sdc *sdc = sta->cmdSdc();
@@ -1356,7 +1358,7 @@ default_arrival_clock()
 }
 
 ClockSeq
-find_clocks_matching(const char *pattern,
+find_clocks_matching(std::string pattern,
                      bool regexp,
                      bool nocase)
 {
@@ -1489,115 +1491,103 @@ find_register_output_pins(ClockSet *clks,
 
 ////////////////////////////////////////////////////////////////
 
-template <typename T> std::vector<T*>
-filter_objects(const char *property,
-               const char *op,
-               const char *pattern,
-               std::vector<T*> *objects)
-{
-  std::vector<T*> filtered_objects;
-  if (objects) {
-    Sta *sta = Sta::sta();
-    Properties &properties = sta->properties();
-    bool exact_match = stringEq(op, "==");
-    bool pattern_match = stringEq(op, "=~");
-    bool not_match = stringEq(op, "!=");
-    bool not_pattern_match = stringEq(op, "!~");
-    for (T *object : *objects) {
-      PropertyValue value(properties.getProperty(object, property));
-      std::string prop_str = value.to_string(sta->network());
-      const char *prop = prop_str.c_str();
-      if (!prop_str.empty()
-          && ((exact_match && stringEq(prop, pattern))
-              || (not_match && !stringEq(prop, pattern))
-              || (pattern_match && patternMatch(pattern, prop))
-              || (not_pattern_match && !patternMatch(pattern, prop))))
-        filtered_objects.push_back(object);
-    }
-    delete objects;
-  }
-  return filtered_objects;
-}
-
 PortSeq
-filter_ports(const char *property,
-             const char *op,
-             const char *pattern,
-             PortSeq *ports)
+filter_ports(const char *filter_expression,
+	     PortSeq *ports,
+             bool bool_props_as_int)
 {
-  return filter_objects<const Port>(property, op, pattern, ports);
+  sta::Sta *sta = Sta::sta(); 
+  return filterPorts(filter_expression, ports, bool_props_as_int, sta);
 }
 
 InstanceSeq
-filter_insts(const char *property,
-             const char *op,
-             const char *pattern,
-             InstanceSeq *insts)
+filter_insts(const char *filter_expression,
+	     InstanceSeq *insts,
+             bool bool_props_as_int)
 {
-  return filter_objects<const Instance>(property, op, pattern, insts);
+  sta::Sta *sta = Sta::sta(); 
+  return filterInstances(filter_expression, insts, bool_props_as_int, sta);
 }
 
 PinSeq
-filter_pins(const char *property,
-            const char *op,
-            const char *pattern,
-            PinSeq *pins)
+filter_pins(const char *filter_expression,
+            PinSeq *pins,
+            bool bool_props_as_int)
 {
-  return filter_objects<const Pin>(property, op, pattern, pins);
-}
-
-ClockSeq
-filter_clocks(const char *property,
-              const char *op,
-              const char *pattern,
-              ClockSeq *clocks)
-{
-  return filter_objects<Clock>(property, op, pattern, clocks);
-}
-
-LibertyCellSeq
-filter_lib_cells(const char *property,
-                 const char *op,
-                 const char *pattern,
-                 LibertyCellSeq *cells)
-{
-  return filter_objects<LibertyCell>(property, op, pattern, cells);
-}
-
-LibertyPortSeq
-filter_lib_pins(const char *property,
-                const char *op,
-                const char *pattern,
-                LibertyPortSeq *pins)
-{
-  return filter_objects<LibertyPort>(property, op, pattern, pins);
-}
-
-LibertyLibrarySeq
-filter_liberty_libraries(const char *property,
-                         const char *op,
-                         const char *pattern,
-                         LibertyLibrarySeq *libs)
-{
-  return filter_objects<LibertyLibrary>(property, op, pattern, libs);
+  sta::Sta *sta = Sta::sta(); 
+  return filterPins(filter_expression, pins, bool_props_as_int, sta);
 }
 
 NetSeq
-filter_nets(const char *property,
-            const char *op,
-            const char *pattern,
-            NetSeq *nets)
+filter_nets(const char *filter_expression,
+            NetSeq *nets,
+            bool bool_props_as_int)
 {
-  return filter_objects<const Net>(property, op, pattern, nets);
+  sta::Sta *sta = Sta::sta(); 
+  return filterNets(filter_expression, nets, bool_props_as_int, sta);
+}
+
+ClockSeq
+filter_clocks(const char *filter_expression,
+              ClockSeq *clocks,
+              bool bool_props_as_int)
+{
+  sta::Sta *sta = Sta::sta(); 
+  return filterClocks(filter_expression, clocks, bool_props_as_int, sta);
+}
+
+LibertyCellSeq
+filter_lib_cells(const char *filter_expression,
+                 LibertyCellSeq *cells,
+                 bool bool_props_as_int)
+{
+  sta::Sta *sta = Sta::sta(); 
+  return filterLibCells(filter_expression, cells, bool_props_as_int, sta);
+}
+
+LibertyPortSeq
+filter_lib_pins(const char *filter_expression,
+                LibertyPortSeq *pins,
+                bool bool_props_as_int)
+{
+  sta::Sta *sta = Sta::sta(); 
+  return filterLibPins(filter_expression, pins, bool_props_as_int, sta);
+}
+
+LibertyLibrarySeq
+filter_liberty_libraries(const char *filter_expression,
+                         LibertyLibrarySeq *libs,
+                         bool bool_props_as_int)
+{
+  sta::Sta *sta = Sta::sta(); 
+  return filterLibertyLibraries(filter_expression, libs, bool_props_as_int, sta);
 }
 
 EdgeSeq
-filter_timing_arcs(const char *property,
-                   const char *op,
-                   const char *pattern,
-                   EdgeSeq *edges)
+filter_timing_arcs(const char *filter_expression,
+                   EdgeSeq *edges,
+                   bool bool_props_as_int)
 {
-  return filter_objects<Edge>(property, op, pattern, edges);
+  sta::Sta *sta = Sta::sta(); 
+  return filterTimingArcs(filter_expression, edges, bool_props_as_int, sta);
+}
+
+PathEndSeq
+filter_path_ends(const char *filter_expression,
+                 PathEndSeq *path_ends,
+                 bool bool_props_as_int)
+{
+  sta::Sta *sta = Sta::sta(); 
+  return filterPathEnds(filter_expression, path_ends, bool_props_as_int, sta);
+}
+
+// For FilterExpr unit tests.
+StringSeq
+filter_expr_to_postfix(const char* expr,
+                       bool bool_props_as_int)
+{
+  Report *report = Sta::sta()->report();
+  return filterExprToPostfix(expr, bool_props_as_int, report);
 }
 
 ////////////////////////////////////////////////////////////////

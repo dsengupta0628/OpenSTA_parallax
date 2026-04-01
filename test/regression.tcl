@@ -30,7 +30,7 @@
 # 
 # This notice may not be removed or altered from any source distribution.
 
-# Usage: regression -help | [-threads threads] [-j jobs] [-valgrind] [-report_stats]
+# Usage: regression -help | [-j jobs] [-threads threads] [-valgrind] [-report_stats]
 #                   test1 [test2...]
 
 proc regression_main {} {
@@ -82,8 +82,8 @@ proc parse_args {} {
     set arg [lindex $argv 0]
     if { $arg == "help" || $arg == "-help" } {
       puts {Usage: regression [-help] [-threads threads] [-j jobs] [-valgrind] [-report_stats] tests...}
-      puts "  -threads max|integer - number of threads to use"
-      puts "  -j jobs - number of parallel jobs (processes) to run"
+      puts "  -j jobs - number of parallel test jobs (processes) to run"
+      puts "  -threads max|integer - number of threads the STA uses"
       puts "  -valgrind - run valgrind (linux memory checker)"
       puts "  -report_stats - report run time and memory"
       puts "  Wildcarding for test names is supported (enclose in \"'s)"
@@ -177,7 +177,6 @@ proc run_tests {} {
     }
   }
   write_failure_file
-  write_diff_file
 }
 
 proc run_test { test } {
@@ -268,6 +267,8 @@ proc run_tests_parallel {} {
         vwait reg_parallel_job_done
       }
     }
+    # update results/failures and results/diffs
+    write_failure_file
   }
 }
 
@@ -434,23 +435,23 @@ proc test_failed { test reason } {
 }
 
 proc write_failure_file {} {
-  global failure_file failed_tests
+  global failure_file failed_tests failed_tests_summery
+  global diff_file diff_options
 
-  set ch [open $failure_file "w"]
+  set fail_ch [open $failure_file "a"]
   foreach test $failed_tests {
-    puts $ch $test
-  }
-  close $ch
-}
+    if { ![info exists failed_tests_summery($test)] } {
+      puts $fail_ch $test
 
-proc write_diff_file {} {
-  global diff_file diff_options failed_tests
+      # Append diff to results/diffs
+      set log_file [test_log_file $test]
+      set ok_file [test_ok_file $test]
+      catch [concat exec diff $diff_options $ok_file $log_file >> $diff_file]
 
-  foreach test $failed_tests {
-    set log_file [test_log_file $test]
-    set ok_file [test_ok_file $test]
-    catch [concat exec diff $diff_options $ok_file $log_file >> $diff_file]
+      set failed_tests_summery($test) 1
+    }
   }
+  close $fail_ch
 }
 
 # Error messages can be found in "valgrind/memcheck/mc_errcontext.c".

@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <string_view>
 
 #include "Format.hh"
 #include "Report.hh"
@@ -43,7 +44,6 @@
 #include "TimingArc.hh"
 #include "TableModel.hh"
 #include "Liberty.hh"
-#include "Network.hh"
 #include "Sdc.hh"
 #include "Parasitics.hh"
 #include "ArcDelayCalc.hh"
@@ -77,11 +77,11 @@ exp2(double x);
 class DmpError : public Exception
 {
 public:
-  DmpError(const char *what);
-  virtual const char *what() const noexcept { return what_; }
+  DmpError(std::string_view what);
+  virtual const char *what() const noexcept { return what_.c_str(); }
 
 private:
-  const char *what_;
+  std::string what_;
 };
 
 static double
@@ -126,7 +126,7 @@ public:
   DmpAlg(int nr_order,
          StaState *sta);
   ~DmpAlg() override = default;
-  virtual const char *name() = 0;
+  virtual std::string_view name() = 0;
   // Set driver model and pi model parameters for delay calculation.
   virtual void init(const LibertyLibrary *library,
                     const LibertyCell *drvr_cell,
@@ -138,9 +138,9 @@ public:
                     double c2,
                     double rpi,
                     double c1);
-  virtual void gateDelaySlew(  // Return values.
-      double &delay,
-      double &slew) = 0;
+  virtual void gateDelaySlew(// Return values.
+                             double &delay,
+                             double &slew) = 0;
   virtual void loadDelaySlew(const Pin *load_pin,
                              double elmore,
                              // Return values.
@@ -201,7 +201,7 @@ protected:
                         double lower_bound,
                         double upper_bound);
   void showVl();
-  void fail(const char *reason);
+  void fail(std::string_view reason);
 
   // Output response to vs(t) ramp driving capacitive load.
   double y(double t,
@@ -448,10 +448,10 @@ DmpAlg::showJacobian()
 {
   std::string line = "    ";
   for (int j = 0; j < nr_order_; j++)
-    line += sta::format("{:12}", dmp_param_index_strings[j]);
+    line += sta::format("{:>12}", dmp_param_index_strings[j]);
   report_->reportLine(line);
-  line.clear();
   for (int i = 0; i < nr_order_; i++) {
+    line.clear();
     line += sta::format("{:4} ", dmp_func_index_strings[i]);
     for (int j = 0; j < nr_order_; j++)
       line += sta::format("{:12.3e} ", fjac_[i][j]);
@@ -551,10 +551,10 @@ DmpAlg::loadDelaySlew(const Pin *,
     // Use the driver thresholds and rely on thresholdAdjust to
     // convert the delay and slew to the load's thresholds.
     try {
-      if (debug_->check("dmp_ceff", 4))
-        showVl();
       elmore_ = elmore;
       p3_ = 1.0 / elmore;
+      if (debug_->check("dmp_ceff", 4))
+        showVl();
       double t_lower = t0_;
       double t_upper = vlCrossingUpperBound();
       double load_delay = findVlCrossing(vth_, t_lower, t_upper);
@@ -655,7 +655,7 @@ DmpAlg::showVl()
 }
 
 void
-DmpAlg::fail(const char *reason)
+DmpAlg::fail(std::string_view reason)
 {
   // Report failures with a unique debug flag.
   if (debug_->check("dmp_ceff", 1) || debug_->check("dcalc_error", 1))
@@ -673,7 +673,7 @@ class DmpCap : public DmpAlg
 {
 public:
   DmpCap(StaState *sta);
-  const char *name() override { return "cap"; }
+  std::string_view name() override { return "cap"; }
   void init(const LibertyLibrary *library,
             const LibertyCell *drvr_cell,
             const Pvt *pvt,
@@ -684,9 +684,9 @@ public:
             double c2,
             double rpi,
             double c1) override;
-  void gateDelaySlew(  // Return values.
-      double &delay,
-      double &slew) override;
+  void gateDelaySlew(// Return values.
+                     double &delay,
+                     double &slew) override;
   void loadDelaySlew(const Pin *,
                      double elmore,
                      // Return values.
@@ -725,15 +725,15 @@ DmpCap::init(const LibertyLibrary *drvr_library,
              double c1)
 {
   debugPrint(debug_, "dmp_ceff", 3, "Using DMP cap");
-  DmpAlg::init(drvr_library, drvr_cell, pvt, gate_model, rf, rd, in_slew, c2, rpi,
-               c1);
+  DmpAlg::init(drvr_library, drvr_cell, pvt, gate_model, rf, rd, in_slew,
+               c2, rpi, c1);
   ceff_ = c1 + c2;
 }
 
 void
-DmpCap::gateDelaySlew(  // Return values.
-    double &delay,
-    double &slew)
+DmpCap::gateDelaySlew(// Return values.
+                      double &delay,
+                      double &slew)
 {
   debugPrint(debug_, "dmp_ceff", 3, "    ceff = {}",
              units_->capacitanceUnit()->asString(ceff_));
@@ -789,7 +789,7 @@ class DmpPi : public DmpAlg
 {
 public:
   DmpPi(StaState *sta);
-  const char *name() override { return "Pi"; }
+  std::string_view name() override { return "Pi"; }
   void init(const LibertyLibrary *library,
             const LibertyCell *drvr_cell,
             const Pvt *pvt,
@@ -800,9 +800,9 @@ public:
             double c2,
             double rpi,
             double c1) override;
-  void gateDelaySlew(  // Return values.
-      double &delay,
-      double &slew) override;
+  void gateDelaySlew(// Return values.
+                     double &delay,
+                     double &slew) override;
   void evalDmpEqns() override;
   double voCrossingUpperBound() override;
 
@@ -867,8 +867,8 @@ DmpPi::init(const LibertyLibrary *drvr_library,
             double c1)
 {
   debugPrint(debug_, "dmp_ceff", 3, "Using DMP Pi");
-  DmpAlg::init(drvr_library, drvr_cell, pvt, gate_model, rf, rd, in_slew, c2, rpi,
-               c1);
+  DmpAlg::init(drvr_library, drvr_cell, pvt, gate_model, rf, rd, in_slew,
+               c2, rpi, c1);
 
   // Find poles/zeros.
   z1_ = 1.0 / (rpi_ * c1_);
@@ -892,9 +892,9 @@ DmpPi::init(const LibertyLibrary *drvr_library,
 }
 
 void
-DmpPi::gateDelaySlew(  // Return values.
-    double &delay,
-    double &slew)
+DmpPi::gateDelaySlew(// Return values.
+                     double &delay,
+                     double &slew)
 {
   driver_valid_ = false;
   try {
@@ -1115,7 +1115,7 @@ class DmpZeroC2 : public DmpOnePole
 {
 public:
   DmpZeroC2(StaState *sta);
-  const char *name() override { return "c2=0"; }
+  std::string_view name() override { return "c2=0"; }
   void init(const LibertyLibrary *drvr_library,
             const LibertyCell *drvr_cell,
             const Pvt *pvt,
@@ -1126,9 +1126,9 @@ public:
             double c2,
             double rpi,
             double c1) override;
-  void gateDelaySlew(  // Return values.
-      double &delay,
-      double &slew) override;
+  void gateDelaySlew(// Return values.
+                     double &delay,
+                     double &slew) override;
 
 private:
   void V0(double t,
@@ -1175,8 +1175,8 @@ DmpZeroC2::init(const LibertyLibrary *drvr_library,
                 double c1)
 {
   debugPrint(debug_, "dmp_ceff", 3, "Using DMP C2=0");
-  DmpAlg::init(drvr_library, drvr_cell, pvt, gate_model, rf, rd, in_slew, c2, rpi,
-               c1);
+  DmpAlg::init(drvr_library, drvr_cell, pvt, gate_model, rf, rd, in_slew,
+               c2, rpi, c1);
   ceff_ = c1;
 
   z1_ = 1.0 / (rpi_ * c1_);
@@ -1189,9 +1189,9 @@ DmpZeroC2::init(const LibertyLibrary *drvr_library,
 }
 
 void
-DmpZeroC2::gateDelaySlew(  // Return values.
-    double &delay,
-    double &slew)
+DmpZeroC2::gateDelaySlew(// Return values.
+                         double &delay,
+                         double &slew)
 {
   try {
     findDriverParams(c1_);
@@ -1274,8 +1274,10 @@ newtonRaphson(const int max_iter,
         all_under_x_tol = false;
       x[i] += p[i];
     }
-    if (all_under_x_tol)
+    if (all_under_x_tol) {
+      eval();
       return;
+    }
   }
   throw DmpError("Newton-Raphson max iterations exceeded");
 }
@@ -1556,8 +1558,8 @@ DmpCeffDelayCalc::setCeffAlgorithm(const LibertyLibrary *drvr_library,
   }
   else
     dmp_alg_ = dmp_cap_;
-  dmp_alg_->init(drvr_library, drvr_cell, pvt, gate_model, rf, rd, in_slew, c2, rpi,
-                 c1);
+  dmp_alg_->init(drvr_library, drvr_cell, pvt, gate_model, rf, rd, in_slew,
+                 c2, rpi, c1);
   debugPrint(debug_, "dmp_ceff", 3,
              "    DMP in_slew = {} c2 = {} rpi = {} c1 = {} Rd = {} ({} alg)",
              units_->timeUnit()->asString(in_slew),
@@ -1666,10 +1668,10 @@ DmpCeffDelayCalc::copyState(const StaState *sta)
   dmp_zero_c2_->copyState(sta);
 }
 
-DmpError::DmpError(const char *what) :
+DmpError::DmpError(std::string_view what) :
   what_(what)
 {
-  // printf("DmpError %s\n", what);
+  //sta::print(stdout, "DmpError {}\n", what);
 }
 
 // This saves about 2.5% in overall run time on designs with SPEF.

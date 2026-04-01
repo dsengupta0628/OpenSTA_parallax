@@ -41,7 +41,7 @@ public:
   CcsCeffDelayCalc(StaState *sta);
   virtual ~CcsCeffDelayCalc();
   ArcDelayCalc *copy() override;
-  const char *name() const override { return "ccs_ceff"; }
+  std::string_view name() const override { return "ccs_ceff"; }
   bool reduceSupported() const override { return true; }
   ArcDcalcResult gateDelay(const Pin *drvr_pin,
                            const TimingArc *arc,
@@ -71,22 +71,15 @@ protected:
   typedef std::vector<double> Region;
 
   void gateDelaySlew(const LibertyLibrary *drvr_library,
-                     const RiseFall *rf,
                      // Return values.
                      double &gate_delay,
                      double &drvr_slew);
   void initRegions(const LibertyLibrary *drvr_library,
                    const RiseFall *rf);
   void findCsmWaveform();
-  ArcDcalcResult makeResult(const LibertyLibrary *drvr_library,
-                            const RiseFall *rf,
-                            double &gate_delay,
-                            double &drvr_slew,
-                            const LoadPinIndexMap &load_pin_index_map);
   void loadDelaySlew(const Pin *load_pin,
                      const LibertyLibrary *drvr_library,
-                     const RiseFall *rf,
-                     double &drvr_slew,
+                     double drvr_slew,
                      // Return values.
                      double &wire_delay,
                      double &load_slew);
@@ -120,7 +113,7 @@ protected:
           double &dvl_dt);
   double vl(double t,
            double elmore);
-  void fail(const char *reason);
+  void fail(std::string_view reason);
 
   const Pin *drvr_pin_;
   const RiseFall *drvr_rf_;

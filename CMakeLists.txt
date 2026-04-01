@@ -22,17 +22,9 @@
 # 
 # This notice may not be removed or altered from any source distribution.
 
-cmake_minimum_required (VERSION 3.10)
-if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
-# Use standard target names
-cmake_policy(SET CMP0078 NEW)
-endif()
-if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.14)
-# Allows SWIG_MODULE_NAME to be set
-cmake_policy(SET CMP0086 NEW)
-endif()
+cmake_minimum_required (VERSION 3.16)
 
-project(STA VERSION 3.0.1
+project(STA VERSION 3.1.0
   LANGUAGES CXX
 )
 
@@ -160,6 +152,7 @@ set(STA_SOURCE
   sdc/DeratingFactors.cc
   sdc/DisabledPorts.cc
   sdc/ExceptionPath.cc
+  sdc/FilterObjects.cc
   sdc/InputDrive.cc
   sdc/PinPair.cc
   sdc/PortDelay.cc
@@ -403,15 +396,44 @@ find_package(Threads)
 
 find_package(Eigen3 REQUIRED)
 
-# fmt library: fallback when std::format is not available (e.g. GCC 11 on Ubuntu 22.04)
-find_package(fmt QUIET)
-if(NOT fmt_FOUND)
-  include(FetchContent)
-  FetchContent_Declare(fmt
-    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-    GIT_TAG 10.2.1
-  )
-  FetchContent_MakeAvailable(fmt)
+# See if std::format is available and if nor install fmt.
+include(CheckCXXSourceCompiles)
+set(_sta_fmt_check_saved_flags "${CMAKE_REQUIRED_FLAGS}")
+if(MSVC)
+  string(APPEND CMAKE_REQUIRED_FLAGS " /std:c++20")
+else()
+  string(APPEND CMAKE_REQUIRED_FLAGS " -std=c++20")
+endif()
+check_cxx_source_compiles("
+#include <format>
+#include <string>
+int main() { (void)std::format(\"{}\", 42); return 0; }
+" HAVE_CXX_STD_FORMAT)
+set(CMAKE_REQUIRED_FLAGS "${_sta_fmt_check_saved_flags}")
+
+if(HAVE_CXX_STD_FORMAT)
+  message(STATUS "std::format: available")
+else()
+  # Set the fmt dir for the ubuntu/centos docker files.
+  if(EXISTS "/usr/local/lib/cmake/fmt/fmt-config.cmake")
+    set(fmt_DIR "/usr/local/lib/cmake/fmt")
+  elseif(EXISTS "/usr/lib/x86_64-linux-gnu/cmake/fmt/fmt-config.cmake")
+    set(fmt_DIR "/usr/lib/x86_64-linux-gnu/cmake/fmt")
+  elseif(EXISTS "/usr/lib/aarch64-linux-gnu/cmake/fmt/fmt-config.cmake")
+    set(fmt_DIR "/usr/lib/aarch64-linux-gnu/cmake/fmt")
+  endif()
+  find_package(fmt QUIET)
+  if(fmt_FOUND)
+    message(STATUS "std::format: using installed fmt library")
+  else()
+    message(STATUS "std::format: building fmt library")
+    include(FetchContent)
+    FetchContent_Declare(fmt
+      GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+      GIT_TAG 10.2.1
+    )
+    FetchContent_MakeAvailable(fmt)
+  endif()
 endif()
 
 include(cmake/FindCUDD.cmake)
@@ -426,6 +448,7 @@ configure_file(${STA_HOME}/util/StaConfig.hh.cmake
 ###########################################################
 
 find_package(SWIG 3.0 REQUIRED)
+message(STATUS "SWIG version: ${SWIG_VERSION}")
 include(UseSWIG)
 
 set(STA_SWIG_FILE app/StaApp.i)
@@ -433,14 +456,12 @@ set(STA_SWIG_FILE app/StaApp.i)
 set_property(SOURCE ${STA_SWIG_FILE}
   PROPERTY CPLUSPLUS ON
 )
-# Ubuntu 18.04 cmake version 3.10.2 does not support the
-# COMPILE_OPTIONS and INCLUDE_DIRECTORIES properties, so cram
-# them into SWIG_FLAGS for the time being.
+# SWIG flags (CMake UseSWIG).
 set_property(SOURCE ${STA_SWIG_FILE}
-  PROPERTY SWIG_FLAGS
+  PROPERTY COMPILE_OPTIONS
   -module sta
-  -namespace -prefix sta
-  -I${STA_HOME}
+  -namespace
+  -prefix sta
 )
 
 set(SWIG_FILES
@@ -497,6 +518,9 @@ target_include_directories(sta_swig
   ${CMAKE_CURRENT_BINARY_DIR}/include/sta
 )
 
+# Pass sta_swig include directories to SWIG as -I (same paths as the C++ build).
+set_property(TARGET sta_swig PROPERTY SWIG_USE_TARGET_INCLUDE_DIRECTORIES TRUE)
+
 ###########################################################
 # Library
 ###########################################################
@@ -529,11 +553,14 @@ target_sources(OpenSTA
 
 target_link_libraries(OpenSTA
   Eigen3::Eigen
-  fmt::fmt
   ${TCL_LIBRARY}
   ${CMAKE_THREAD_LIBS_INIT}
   ${CUDD_LIB}
   )
+
+if(NOT HAVE_CXX_STD_FORMAT)
+  target_link_libraries(OpenSTA fmt::fmt)
+endif()
 
 if (ZLIB_LIBRARIES)
   target_link_libraries(OpenSTA ${ZLIB_LIBRARIES})

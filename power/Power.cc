@@ -344,24 +344,24 @@ Power::reportInstsJson(const InstanceSeq &insts,
 }
 
 void
-Power::reportPowerRowJson(const char *name,
+Power::reportPowerRowJson(std::string_view type,
                           const PowerResult &power,
                           int digits,
-                          const char *separator)
+                          std::string_view eol)
 {
   float internal = power.internal();
   float switching = power.switching();
   float leakage = power.leakage();
   float total = power.total();
 
-  report_->report("  \"{}\": {{", name);
+  report_->report("  \"{}\": {{", type);
   report_->report("    \"internal\": {:.{}e},", internal, digits);
   report_->report("    \"switching\": {:.{}e},", switching, digits);
   report_->report("    \"leakage\": {:.{}e},", leakage, digits);
   report_->report("    \"total\": {:.{}e}", total, digits);
   std::string line = "  }";
-  if (separator && separator[0] != '\0')
-    line += separator;
+  if (!eol.empty())
+    line += eol;
   report_->reportLine(line);
 }
 
@@ -375,9 +375,8 @@ Power::reportPowerInstJson(const Instance *inst,
   float leakage = power.leakage();
   float total = power.total();
 
-  const char *inst_name = network_->pathName(inst);
   report_->report("{{");
-  report_->report("  \"name\": \"{}\",", inst_name);
+  report_->report("  \"name\": \"{}\",", network_->pathName(inst));
   report_->report("  \"internal\": {:.{}e},", internal, digits);
   report_->report("  \"switching\": {:.{}e},", switching, digits);
   report_->report("  \"leakage\": {:.{}e},", leakage, digits);
@@ -1427,8 +1426,12 @@ Power::findSwitchingPower(const Instance *inst,
         float volt = portVoltage(scene_cell, to_port, scene, MinMax::max());
         float switching = .5 * load_cap * volt * volt * activity.density();
         debugPrint(debug_, "power", 2,
-                   "switching {}/{} activity = {:.2e} volt = {:.2f} {:.3e}", cell->name(),
-                   to_port->name(), activity.density(), volt, switching);
+                   "switching {}/{} activity = {:.2e} volt = {:.2f} {:.3e}",
+                   cell->name(),
+                   to_port->name(),
+                   activity.density(),
+                   volt,
+                   switching);
         result.incrSwitching(switching);
       }
     }
@@ -1477,14 +1480,18 @@ Power::findLeakagePower(const Instance *inst,
   for (const LeakagePower &pwr : scene_cell->leakagePowers()) {
     LibertyPort *pg_port = pwr.relatedPgPort();
     if (pg_port == nullptr || pg_port->pwrGndType() == PwrGndType::primary_power) {
+      std::string pg_name = pg_port ? pg_port->name() : "?";
       LeakageSummary &sum = leakage_summaries[pg_port];
       float leakage = pwr.power();
       FuncExpr *when = pwr.when();
       if (when) {
         LogicValue when_value = sim->evalExpr(when, inst);
         if (when_value == LogicValue::one) {
-          debugPrint(debug_, "power", 2, "leakage {}/{} {}=1 {:.3e}", cell->name(),
-                     pg_port->name(), when->to_string(), leakage);
+          debugPrint(debug_, "power", 2, "leakage {}/{} {}=1 {:.3e}",
+                     cell->name(),
+                     pg_name,
+                     when->to_string(),
+                     leakage);
           sum.cond_true_leakage = leakage;
           sum.cond_true_exists = true;
         }
@@ -1492,7 +1499,9 @@ Power::findLeakagePower(const Instance *inst,
           PwrActivity cond_activity = evalActivity(when, inst);
           float cond_duty = cond_activity.duty();
           debugPrint(debug_, "power", 2, "leakage {} {} {} {:.3e} * {:.2f}",
-                     cell->name(), pg_port->name(), when->to_string(),
+                     cell->name(),
+                     pg_name,
+                     when->to_string(),
                      leakage, cond_duty);
           // Leakage power average weighted by duty.
           sum.cond_leakage += leakage * cond_duty;
@@ -1502,8 +1511,10 @@ Power::findLeakagePower(const Instance *inst,
         }
       }
       else {
-        debugPrint(debug_, "power", 2, "leakage {} {} -- {:.3e}", cell->name(),
-                   pg_port->name(), leakage);
+        debugPrint(debug_, "power", 2, "leakage {} {} -- {:.3e}",
+                   cell->name(),
+                   pg_name,
+                   leakage);
         sum.uncond_leakage = leakage;
         sum.uncond_exists = true;
       }
@@ -1529,8 +1540,10 @@ Power::findLeakagePower(const Instance *inst,
       // Ignore unconditional leakage unless there are no conditional leakage groups.
       else if (sum.uncond_exists)
         leakage = sum.uncond_leakage;
-      debugPrint(debug_, "power", 2, "leakage {}/{} {:.3e}", cell->name(),
-                 pg_port->name(), leakage);
+      debugPrint(debug_, "power", 2, "leakage {}/{} {:.3e}",
+                 cell->name(),
+                 pg_port ? pg_port->name() : "?",
+                 leakage);
       result.incrLeakage(leakage);
     }
   }
@@ -1608,26 +1621,23 @@ Power::portVoltage(LibertyCell *cell,
                    const Scene *scene,
                    const MinMax *min_max)
 {
-  return pgNameVoltage(cell, port->relatedPowerPin(), scene, min_max);
+  return pgPortVoltage(cell, port->relatedPowerPort(), scene, min_max);
 }
 
 float
-Power::pgNameVoltage(LibertyCell *cell,
-                     const char *pg_port_name,
+Power::pgPortVoltage(LibertyCell *cell,
+                     const LibertyPort *pg_port,
                      const Scene *scene,
                      const MinMax *min_max)
 {
-  if (pg_port_name) {
-    LibertyPort *pg_port = cell->findLibertyPort(pg_port_name);
-    if (pg_port) {
-      const char *volt_name = pg_port->voltageName();
-      LibertyLibrary *library = cell->libertyLibrary();
-      float voltage;
-      bool exists;
-      library->supplyVoltage(volt_name, voltage, exists);
-      if (exists)
-        return voltage;
-    }
+  if (pg_port) {
+    const std::string &volt_name = pg_port->voltageName();
+    LibertyLibrary *library = cell->libertyLibrary();
+    float voltage;
+    bool exists;
+    library->supplyVoltage(volt_name, voltage, exists);
+    if (exists)
+      return voltage;
   }
 
   Pvt *pvt = scene->sdc()->operatingConditions(min_max);
@@ -1700,7 +1710,7 @@ Power::reportActivityAnnotation(bool report_unannotated,
     for (const Pin *pin : annotated_pins) {
       const PwrActivity &activity = user_activity_map_[pin];
       PwrActivityOrigin origin = activity.origin();
-      const char *origin_name = pwr_activity_origin_map.find(origin);
+      const std::string &origin_name = pwr_activity_origin_map.find(origin);
       report_->report("{:>5} {}", origin_name, sdc_network_->pathName(pin));
     }
   }
@@ -1913,7 +1923,7 @@ PwrActivity::isSet() const
   return origin_ != PwrActivityOrigin::unknown;
 }
 
-const char *
+const std::string &
 PwrActivity::originName() const
 {
   return pwr_activity_origin_map.find(origin_);
